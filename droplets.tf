@@ -3,7 +3,7 @@ resource "digitalocean_droplet" "web" {
   name     = "ameciclo-${count.index + 1}"
   region   = var.region
   size     = var.droplet_size
-  image    = "ubuntu-22-04-x64"
+  image    = "ubuntu-24-04-x64"
   ipv6     = true
   vpc_uuid = digitalocean_vpc.ameciclo_vpc.id
 

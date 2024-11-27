@@ -5,7 +5,7 @@ variable "region" {
   default = "nyc3"
 }
 variable "droplet_size" {
-  default = "2vcpu-4gb-amd"
+  default = "s-2vcpu-4gb-amd"
 }
 variable "postgresql_name" {
   default = "ameciclo-postgres-db"

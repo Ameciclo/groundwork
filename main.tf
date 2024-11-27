@@ -5,6 +5,13 @@ terraform {
       version = "~> 2.0"
     }
   }
+  backend "remote" {
+    organization = "Ameciclo"
+
+    workspaces {
+      name = "groundwork"
+    }
+  }
 }
 
 provider "digitalocean" {

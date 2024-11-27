@@ -3,7 +3,7 @@ resource "digitalocean_database_cluster" "postgresql" {
   engine               = "pg"
   version              = "16"
   region               = var.region
-  size                 = "amd-1-1-25-dd"
+  size                 = "db-amd-1vcpu-1gb"
   node_count           = 1
   private_network_uuid = digitalocean_vpc.ameciclo_vpc.id
 }

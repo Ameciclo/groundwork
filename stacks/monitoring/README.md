@@ -23,7 +23,7 @@ This directory contains a Docker Swarm stack for monitoring your infrastructure 
 After deployment, you can access:
 
 - **Prometheus**: http://your-server-ip:9090
-- **Grafana**: http://your-server-ip:3000
+- **Grafana**: http://your-server-ip:3001
 - **cAdvisor**: http://your-server-ip:8080
 - **Node Exporter**: http://your-server-ip:9100 (metrics endpoint)
 

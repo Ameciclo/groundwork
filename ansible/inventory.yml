@@ -1,0 +1,6 @@
+all:
+  hosts:
+    ameciclo-1:
+      ansible_host: 159.203.167.63
+      ansible_user: root
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa

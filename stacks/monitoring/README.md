@@ -24,7 +24,7 @@ After deployment, you can access:
 
 - **Prometheus**: http://your-server-ip:9090
 - **Grafana**: http://your-server-ip:3001
-- **cAdvisor**: http://your-server-ip:8080
+- **cAdvisor**: http://your-server-ip:8081
 - **Node Exporter**: http://your-server-ip:9100 (metrics endpoint)
 
 ## Initial Grafana Setup

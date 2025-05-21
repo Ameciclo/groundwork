@@ -6,8 +6,12 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
-  prometheus_config:
+
+configs:
+  prometheus_yml:
+    file: ./prometheus.yml
   alert_rules:
+    file: ./alert.rules
 
 services:
   prometheus:
@@ -19,9 +23,12 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--web.enable-lifecycle"
     volumes:
-      - prometheus_config:/etc/prometheus/prometheus.yml
-      - alert_rules:/etc/prometheus/alert.rules
       - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+      - source: alert_rules
+        target: /etc/prometheus/alert.rules
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     networks:

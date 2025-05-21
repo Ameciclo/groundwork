@@ -57,19 +57,11 @@ Alert rules are defined in the `alert.rules` file. To add more alerts:
 2. Add your alert rules following the PromQL syntax
 3. Update the stack in Portainer
 
-## Initial Setup
+## Deployment
 
-Before deploying the stack for the first time, you need to create the configuration volumes:
+The stack uses Docker configs to mount the configuration files. The configuration files (`prometheus.yml` and `alert.rules`) are stored in the same directory as the Docker Compose file and are automatically mounted when the stack is deployed.
 
-```bash
-# On your Docker Swarm manager node
-docker volume create monitoring_prometheus_config
-docker volume create monitoring_alert_rules
-
-# Copy the configuration files to the volumes
-docker run --rm -v $(pwd)/prometheus.yml:/src/prometheus.yml -v monitoring_prometheus_config:/dest alpine cp /src/prometheus.yml /dest/
-docker run --rm -v $(pwd)/alert.rules:/src/alert.rules -v monitoring_alert_rules:/dest alpine cp /src/alert.rules /dest/
-```
+No additional setup is required before deployment.
 
 ## Security Considerations
 

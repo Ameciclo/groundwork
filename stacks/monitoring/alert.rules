@@ -1,0 +1,20 @@
+groups:
+- name: example
+  rules:
+  - alert: HighLoad
+    expr: node_load1 > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High load on {{ $labels.instance }}"
+      description: "{{ $labels.instance }} has a high load average: {{ $value }}"
+
+  - alert: InstanceDown
+    expr: up == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} down"
+      description: "{{ $labels.instance }} has been down for more than 5 minutes."

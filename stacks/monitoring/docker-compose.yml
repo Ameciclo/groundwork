@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   monitoring:
     driver: overlay
@@ -8,79 +6,21 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
-
-configs:
   prometheus_config:
-    content: |
-      global:
-        scrape_interval: 15s
-        evaluation_interval: 15s
-
-      # Load and evaluate rules in this file
-      rule_files:
-        - "alert.rules"
-
-      # A scrape configuration containing endpoints to scrape
-      scrape_configs:
-        - job_name: 'prometheus'
-          static_configs:
-            - targets: ['localhost:9090']
-
-        - job_name: 'docker'
-          docker_sd_configs:
-            - host: unix:///var/run/docker.sock
-              refresh_interval: 15s
-          relabel_configs:
-            - source_labels: [__meta_docker_container_name]
-              regex: '/(.*)'
-              target_label: container
-
-        - job_name: 'cadvisor'
-          static_configs:
-            - targets: ['cadvisor:8080']
-
-        - job_name: 'node-exporter'
-          static_configs:
-            - targets: ['node-exporter:9100']
-
   alert_rules:
-    content: |
-      groups:
-      - name: example
-        rules:
-        - alert: HighLoad
-          expr: node_load1 > 0.8
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "High load on {{ $labels.instance }}"
-            description: "{{ $labels.instance }} has a high load average: {{ $value }}"
-
-        - alert: InstanceDown
-          expr: up == 0
-          for: 5m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Instance {{ $labels.instance }} down"
-            description: "{{ $labels.instance }} has been down for more than 5 minutes."
 
 services:
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    configs:
-      - source: prometheus_config
-        target: /etc/prometheus/prometheus.yml
-      - source: alert_rules
-        target: /etc/prometheus/alert.rules
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
     volumes:
+      - prometheus_config:/etc/prometheus/prometheus.yml
+      - alert_rules:/etc/prometheus/alert.rules
       - prometheus_data:/prometheus
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
@@ -141,9 +81,9 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
     networks:

@@ -43,19 +43,33 @@ After deployment, you can access:
 
 ## Customizing Prometheus Configuration
 
-The Prometheus configuration is embedded in the Docker Compose file as a config. To modify it:
+The Prometheus configuration is stored in the `prometheus.yml` file. To modify it:
 
-1. Edit the `prometheus_config` section in the Docker Compose file
+1. Edit the `prometheus.yml` file in this directory
 2. Add or modify scrape targets as needed
 3. Update the stack in Portainer
 
 ## Adding Alert Rules
 
-Alert rules are defined in the `alert_rules` section of the Docker Compose file. To add more alerts:
+Alert rules are defined in the `alert.rules` file. To add more alerts:
 
-1. Edit the `alert_rules` section
+1. Edit the `alert.rules` file in this directory
 2. Add your alert rules following the PromQL syntax
 3. Update the stack in Portainer
+
+## Initial Setup
+
+Before deploying the stack for the first time, you need to create the configuration volumes:
+
+```bash
+# On your Docker Swarm manager node
+docker volume create monitoring_prometheus_config
+docker volume create monitoring_alert_rules
+
+# Copy the configuration files to the volumes
+docker run --rm -v $(pwd)/prometheus.yml:/src/prometheus.yml -v monitoring_prometheus_config:/dest alpine cp /src/prometheus.yml /dest/
+docker run --rm -v $(pwd)/alert.rules:/src/alert.rules -v monitoring_alert_rules:/dest alpine cp /src/alert.rules /dest/
+```
 
 ## Security Considerations
 

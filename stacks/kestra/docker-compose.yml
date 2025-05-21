@@ -1,5 +1,3 @@
-version: "3.8"
-
 networks:
   kestra-network:
     driver: overlay
@@ -8,36 +6,25 @@ networks:
 volumes:
   kestra_data:
   kestra_plugins:
+  kestra_db:
 
 services:
   kestra:
     image: kestra/kestra:${KESTRA_VERSION:-latest}
     environment:
-      - KESTRA_CONFIGURATION=/app/kestra/conf/application.yml
-      - KESTRA_PLUGINS_PATH=/app/plugins
-      # Memory settings
-      - JAVA_OPTS=-Xms256m -Xmx512m
-      # In-memory storage settings
-      - KESTRA_REPOSITORY_TYPE=memory
-      - KESTRA_QUEUE_TYPE=memory
-      - KESTRA_STORAGE_TYPE=local
-      - KESTRA_STORAGE_LOCAL_BASE_PATH=/app/storage
-      # Server settings
-      - KESTRA_SERVER_PORT=8080
-      - KESTRA_SERVER_BASIC_AUTH_ENABLED=${KESTRA_BASIC_AUTH_ENABLED:-true}
-      - KESTRA_SERVER_BASIC_AUTH_USERNAME=${KESTRA_BASIC_AUTH_USERNAME:-admin}
-      - KESTRA_SERVER_BASIC_AUTH_PASSWORD=${KESTRA_BASIC_AUTH_PASSWORD:-kestra}
-      # Metrics for Prometheus
-      - KESTRA_METRICS_ENABLED=true
-      - KESTRA_METRICS_PROMETHEUS_ENABLED=true
+      - JAVA_OPTS=${KESTRA_JAVA_OPTS:--Xms256m -Xmx512m -XX:UseSVE=0}
     volumes:
       - kestra_data:/app/storage
       - kestra_plugins:/app/plugins
-      - ./conf:/app/kestra/conf
+      - kestra_db:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
     ports:
       - "${KESTRA_PORT:-8082}:8080"
     networks:
       - kestra-network
+    user: "root"
+    command: server local
     deploy:
       mode: replicated
       replicas: 1
@@ -48,7 +35,7 @@ services:
         condition: on-failure
       resources:
         limits:
-          memory: 1g
+          memory: ${KESTRA_MEMORY_LIMIT:-1g}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
       interval: 30s

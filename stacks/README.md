@@ -5,7 +5,8 @@ This directory contains Docker Swarm stack definitions for deployment with Porta
 ## Directory Structure
 
 - `kong/` - Kong API Gateway stack
-- Add more services as needed
+- `kestra/` - Kestra workflow orchestration platform
+- `monitoring/` - Prometheus and Grafana monitoring stack
 
 Note: Portainer itself is deployed via Ansible during initial provisioning and not stored here.
 

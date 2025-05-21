@@ -4,12 +4,18 @@ This directory contains a Docker Swarm stack for Kestra, an open-source data orc
 
 ## Configuration
 
-This setup uses an in-memory configuration without a database, suitable for testing and small deployments. For production use, consider adding PostgreSQL and Elasticsearch.
+This setup uses Kestra in "local" mode, which uses an embedded H2 database file for persistence. This approach provides:
+- Persistence across container restarts
+- No need for external database services
+- Simplified deployment and maintenance
+
+For production use with higher scalability, consider adding PostgreSQL and Elasticsearch.
 
 ## Components
 
 - **Kestra Server**: The main application that runs workflows and provides the UI
-- **In-memory Storage**: Used for flows, executions, and task data
+- **Embedded H2 Database**: Stores metadata, flows, and execution history
+- **Local Storage**: Used for task data and artifacts
 - **Prometheus Integration**: Exposes metrics for monitoring
 
 ## Deployment with Portainer
@@ -70,14 +76,15 @@ To add plugins to Kestra:
 2. Place it in a directory on your server
 3. Mount that directory to `/app/plugins` in the Kestra container
 
-## Limitations of In-Memory Storage
+## Limitations of Local Mode
 
-With this in-memory configuration:
-- Data is lost when the container restarts
-- Not suitable for production workloads
+While the local mode with embedded H2 database provides persistence, it has some limitations:
 - Limited scalability (single instance only)
+- No high availability features
+- Performance may degrade with very large datasets
+- No built-in backup/restore functionality (manual volume backups required)
 
-For production use, consider setting up:
+For production use with higher demands, consider setting up:
 - PostgreSQL for metadata storage
 - Elasticsearch for indexing and searching
 - Kafka for the queue system

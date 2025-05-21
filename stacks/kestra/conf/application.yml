@@ -8,7 +8,7 @@ kestra:
     local:
       base-path: /app/storage
   server:
-    port: 8082
+    port: 8080
     basic-auth:
       enabled: true
       username: admin

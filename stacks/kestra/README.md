@@ -24,7 +24,7 @@ This setup uses an in-memory configuration without a database, suitable for test
 ## Accessing Kestra
 
 After deployment, you can access Kestra at:
-- **URL**: http://your-server-ip:8082
+- **URL**: http://your-server-ip:8082 (external port mapped to internal port 8080)
 - **Default credentials**: admin / kestra (change these in the environment variables)
 
 ## Creating Your First Flow
@@ -81,3 +81,25 @@ For production use, consider setting up:
 - PostgreSQL for metadata storage
 - Elasticsearch for indexing and searching
 - Kafka for the queue system
+
+## Troubleshooting
+
+If Kestra fails to start:
+
+1. **Check container logs**:
+   ```bash
+   docker service logs kestra_kestra
+   ```
+
+2. **Memory issues**:
+   - The container is configured with modest memory settings (512MB max)
+   - If your server has limited resources, you may need to reduce this further
+
+3. **Port conflicts**:
+   - Kestra runs on port 8080 internally
+   - We map this to port 8082 externally
+   - Make sure port 8082 is not used by another service
+
+4. **Configuration issues**:
+   - Check that the configuration file is correctly mounted
+   - Verify that the application.yml file has the correct settings

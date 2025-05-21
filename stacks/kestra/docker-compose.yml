@@ -1,0 +1,59 @@
+version: '3.8'
+
+networks:
+  kestra-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  kestra_data:
+  kestra_plugins:
+
+services:
+  kestra:
+    image: kestra/kestra:${KESTRA_VERSION:-latest}
+    environment:
+      - KESTRA_CONFIGURATION=/app/kestra/conf/application.yml
+      - KESTRA_PLUGINS_PATH=/app/plugins
+      # Memory settings
+      - JAVA_OPTS=-Xms${KESTRA_XMS:-512m} -Xmx${KESTRA_XMX:-1g}
+      # In-memory storage settings
+      - KESTRA_REPOSITORY_TYPE=memory
+      - KESTRA_QUEUE_TYPE=memory
+      - KESTRA_STORAGE_TYPE=local
+      - KESTRA_STORAGE_LOCAL_BASE_PATH=/app/storage
+      # Server settings
+      - KESTRA_SERVER_PORT=${KESTRA_PORT:-8080}
+      - KESTRA_SERVER_BASIC_AUTH_ENABLED=${KESTRA_BASIC_AUTH_ENABLED:-true}
+      - KESTRA_SERVER_BASIC_AUTH_USERNAME=${KESTRA_BASIC_AUTH_USERNAME:-admin}
+      - KESTRA_SERVER_BASIC_AUTH_PASSWORD=${KESTRA_BASIC_AUTH_PASSWORD:-kestra}
+      # Metrics for Prometheus
+      - KESTRA_METRICS_ENABLED=true
+      - KESTRA_METRICS_PROMETHEUS_ENABLED=true
+    volumes:
+      - kestra_data:/app/storage
+      - kestra_plugins:/app/plugins
+      - ./conf:/app/kestra/conf
+    ports:
+      - "${KESTRA_PORT:-8080}:8080"
+    networks:
+      - kestra-network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: ${KESTRA_MEMORY_LIMIT:-2g}
+        reservations:
+          memory: ${KESTRA_MEMORY_RESERVATION:-1g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s

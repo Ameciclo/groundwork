@@ -1,0 +1,27 @@
+id: data-processing
+namespace: examples
+description: A simple data processing flow
+
+tasks:
+  - id: generate
+    type: io.kestra.core.tasks.scripts.Bash
+    commands:
+      - echo '{"name":"John","age":30,"city":"New York"}' > data.json
+      - echo '{"name":"Jane","age":25,"city":"Boston"}' >> data.json
+      - echo '{"name":"Bob","age":40,"city":"Chicago"}' >> data.json
+    outputFiles:
+      - data.json
+
+  - id: transform
+    type: io.kestra.core.tasks.scripts.Bash
+    commands:
+      - cat {{ outputs.generate.files.data\\.json }} | jq -c '.age = .age + 1' > transformed.json
+    inputFiles:
+      data.json: "{{ outputs.generate.files.data\\.json }}"
+    outputFiles:
+      - transformed.json
+
+  - id: log
+    type: io.kestra.core.tasks.scripts.Bash
+    commands:
+      - cat {{ outputs.transform.files.transformed\\.json }}

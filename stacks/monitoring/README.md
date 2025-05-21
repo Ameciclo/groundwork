@@ -29,17 +29,20 @@ After deployment, you can access:
 
 ## Initial Grafana Setup
 
-1. Log in to Grafana with the credentials you set in the environment variables
-2. Add Prometheus as a data source:
-   - Go to Configuration > Data Sources > Add data source
-   - Select Prometheus
-   - Set URL to `http://prometheus:9090`
-   - Click "Save & Test"
+Grafana is pre-configured with:
+- Prometheus data source
+- Essential plugins (Pie Chart, Clock Panel)
 
-3. Import dashboards:
+After deployment, you can:
+
+1. Log in to Grafana with the credentials you set in the environment variables
+2. Import dashboards:
    - Go to Dashboards > Import
    - Import dashboard ID 1860 for Node Exporter
    - Import dashboard ID 893 for Docker
+   - Import dashboard ID 3662 for Prometheus Stats
+
+The Prometheus data source is automatically configured via provisioning.
 
 ## Customizing Prometheus Configuration
 

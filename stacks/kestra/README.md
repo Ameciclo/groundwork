@@ -18,13 +18,13 @@ This setup uses an in-memory configuration without a database, suitable for test
 2. Select "Git repository"
 3. Enter your repository URL
 4. Specify the path to this stack: `stacks/kestra/docker-compose.yml`
-5. Add your environment variables (see `.env.example` for reference)
+5. The `.env` file is already included in the repository
 6. Deploy the stack
 
 ## Accessing Kestra
 
 After deployment, you can access Kestra at:
-- **URL**: http://your-server-ip:8080
+- **URL**: http://your-server-ip:8082
 - **Default credentials**: admin / kestra (change these in the environment variables)
 
 ## Creating Your First Flow

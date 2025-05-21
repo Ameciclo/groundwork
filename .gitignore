@@ -7,3 +7,4 @@ terraform.tfvars
 
 # Docker stack environment files
 stacks/**/.env
+!stacks/kestra/.env

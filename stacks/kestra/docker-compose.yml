@@ -12,7 +12,7 @@ services:
   kestra:
     image: kestra/kestra:${KESTRA_VERSION:-latest}
     environment:
-      - JAVA_OPTS=${KESTRA_JAVA_OPTS:--Xms256m -Xmx512m -XX:UseSVE=0}
+      - JAVA_OPTS=${KESTRA_JAVA_OPTS:--Xms256m -Xmx512m}
     volumes:
       - kestra_data:/app/storage
       - kestra_plugins:/app/plugins

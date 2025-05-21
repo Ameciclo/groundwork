@@ -31,4 +31,4 @@ scrape_configs:
   - job_name: "kestra"
     metrics_path: "/metrics"
     static_configs:
-      - targets: ["kestra:8080"]
+      - targets: ["kestra:8082"]

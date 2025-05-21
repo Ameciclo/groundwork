@@ -1,0 +1,83 @@
+# Kestra Workflow Orchestration
+
+This directory contains a Docker Swarm stack for Kestra, an open-source data orchestration and scheduling platform.
+
+## Configuration
+
+This setup uses an in-memory configuration without a database, suitable for testing and small deployments. For production use, consider adding PostgreSQL and Elasticsearch.
+
+## Components
+
+- **Kestra Server**: The main application that runs workflows and provides the UI
+- **In-memory Storage**: Used for flows, executions, and task data
+- **Prometheus Integration**: Exposes metrics for monitoring
+
+## Deployment with Portainer
+
+1. In Portainer, go to Stacks > Add stack
+2. Select "Git repository"
+3. Enter your repository URL
+4. Specify the path to this stack: `stacks/kestra/docker-compose.yml`
+5. Add your environment variables (see `.env.example` for reference)
+6. Deploy the stack
+
+## Accessing Kestra
+
+After deployment, you can access Kestra at:
+- **URL**: http://your-server-ip:8080
+- **Default credentials**: admin / kestra (change these in the environment variables)
+
+## Creating Your First Flow
+
+1. Log in to Kestra
+2. Go to "Namespaces" and create a new namespace (e.g., "examples")
+3. Go to "Flows" and create a new flow:
+
+```yaml
+id: hello-world
+namespace: examples
+tasks:
+  - id: hello
+    type: io.kestra.core.tasks.log.Log
+    message: Hello, World!
+```
+
+4. Save and run the flow
+
+## Monitoring with Prometheus
+
+Kestra exposes metrics at:
+- **Metrics endpoint**: http://kestra:8080/metrics
+
+To add Kestra to your Prometheus monitoring:
+
+1. Edit `stacks/monitoring/prometheus.yml`
+2. Add a new job for Kestra:
+
+```yaml
+- job_name: 'kestra'
+  static_configs:
+    - targets: ['kestra:8080']
+```
+
+3. Update your Prometheus configuration
+
+## Installing Plugins
+
+To add plugins to Kestra:
+
+1. Download the plugin JAR file
+2. Place it in a directory on your server
+3. Mount that directory to `/app/plugins` in the Kestra container
+
+## Limitations of In-Memory Storage
+
+With this in-memory configuration:
+- Data is lost when the container restarts
+- Not suitable for production workloads
+- Limited scalability (single instance only)
+
+For production use, consider setting up:
+- PostgreSQL for metadata storage
+- Elasticsearch for indexing and searching
+- Kafka for the queue system

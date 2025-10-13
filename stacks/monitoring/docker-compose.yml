@@ -2,16 +2,23 @@ networks:
   monitoring:
     driver: overlay
     attachable: true
+  kong-gateway_kong-net:
+    external: true
 
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 configs:
   prometheus_yml:
     file: ./prometheus.yml
   alert_rules:
     file: ./alert.rules
+  loki_yml:
+    file: ./loki.yml
+  promtail_yml:
+    file: ./promtail.yml
 
 services:
   prometheus:
@@ -45,6 +52,9 @@ services:
 
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    labels:
+      - "kong.service=grafana"
+      - "kong.upstream=http://grafana:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -60,6 +70,7 @@ services:
       - "${GRAFANA_PORT:-3001}:3000"
     networks:
       - monitoring
+      - kong-gateway_kong-net
     deploy:
       mode: replicated
       replicas: 1
@@ -103,6 +114,44 @@ services:
     privileged: true
     ports:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
+    networks:
+      - monitoring
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
+  loki:
+    image: grafana/loki:${LOKI_VERSION:-latest}
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    configs:
+      - source: loki_yml
+        target: /etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  promtail:
+    image: grafana/promtail:${PROMTAIL_VERSION:-latest}
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    configs:
+      - source: promtail_yml
+        target: /etc/promtail/config.yml
     networks:
       - monitoring
     deploy:

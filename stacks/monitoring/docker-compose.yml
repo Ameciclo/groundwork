@@ -19,6 +19,8 @@ configs:
     file: ./loki.yml
   promtail_yml:
     file: ./promtail.yml
+  grafana_datasource_prometheus:
+    file: ./grafana/provisioning/datasources/prometheus.yml
 
 services:
   prometheus:
@@ -64,8 +66,10 @@ services:
       # Auto-provision the Prometheus data source
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
+    configs:
+      - source: grafana_datasource_prometheus
+        target: /etc/grafana/provisioning/datasources/prometheus.yml
     ports:
       - "${GRAFANA_PORT:-3001}:3000"
     networks:
@@ -158,3 +162,4 @@ services:
       mode: global
       restart_policy:
         condition: on-failure
+

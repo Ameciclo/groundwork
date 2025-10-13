@@ -1,0 +1,66 @@
+# Kong Service and Route Configuration for Grafana
+# This file provides example configuration for exposing Grafana through Kong Gateway
+# You can apply this configuration through Kong Admin API or Kong Manager
+
+# Service Configuration
+# POST /services
+service:
+  name: grafana
+  url: http://grafana:3000
+  protocol: http
+  host: grafana
+  port: 3000
+  path: /
+
+# Route Configuration  
+# POST /services/grafana/routes
+route:
+  name: grafana-route
+  protocols:
+    - http
+    - https
+  hosts:
+    - grafana.yourdomain.com  # Replace with your domain
+  paths:
+    - /grafana  # Optional: if you want to serve under a path
+  strip_path: true  # Set to false if you want to keep the /grafana path
+
+# Alternative Route Configuration (for subdomain)
+# If you prefer to serve Grafana on a subdomain without path prefix:
+alternative_route:
+  name: grafana-subdomain-route
+  protocols:
+    - http
+    - https
+  hosts:
+    - grafana.yourdomain.com
+  strip_path: false
+
+# Example curl commands to configure via Kong Admin API:
+# 
+# 1. Create the service:
+# curl -X POST http://kong-admin:8001/services \
+#   --data "name=grafana" \
+#   --data "url=http://grafana:3000"
+#
+# 2. Create the route:
+# curl -X POST http://kong-admin:8001/services/grafana/routes \
+#   --data "name=grafana-route" \
+#   --data "hosts[]=grafana.yourdomain.com" \
+#   --data "protocols[]=http" \
+#   --data "protocols[]=https"
+
+# Optional: Add authentication plugin
+# POST /services/grafana/plugins
+auth_plugin_example:
+  name: basic-auth
+  config:
+    hide_credentials: true
+
+# Optional: Add rate limiting
+# POST /services/grafana/plugins  
+rate_limit_plugin_example:
+  name: rate-limiting
+  config:
+    minute: 100
+    hour: 1000

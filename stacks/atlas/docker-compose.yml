@@ -141,14 +141,9 @@ services:
     image: ghcr.io/ameciclo/atlas/docs:${IMAGE_TAG:-latest}
     container_name: atlas-docs
 
-    environment:
-      NODE_ENV: production
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      PORT: ${DOCS_PORT:-3001}
-
     # Expose port internally to Kong network only (no host port binding)
     expose:
-      - "${DOCS_PORT:-3001}"
+      - "80"
 
     networks:
       - kong-net
@@ -159,9 +154,11 @@ services:
       test:
         [
           "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://localhost:${DOCS_PORT:-3001}/', (r) => process.exit(r.statusCode === 200 ? 0 : 1))",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:80/",
         ]
       interval: 30s
       timeout: 10s

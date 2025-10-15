@@ -103,8 +103,7 @@ services:
       - kong-net
 
     depends_on:
-      cyclist-profile-migrate:
-        condition: service_completed_successfully
+      - cyclist-profile-migrate
 
     restart: unless-stopped
 

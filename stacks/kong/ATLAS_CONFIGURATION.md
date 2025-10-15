@@ -54,7 +54,7 @@ curl -X POST http://localhost:8001/services \
   -H "Content-Type: application/json" \
   -d '{
     "name": "atlas-docs",
-    "url": "http://atlas-docs:3001",
+    "url": "http://atlas-docs:80",
     "tags": ["atlas", "docs"]
   }'
 ```
@@ -82,13 +82,14 @@ curl -X POST http://localhost:8001/services/atlas-docs/routes \
 - **Strip Path**: `true` (removes `/api/cyclist-profile` prefix before forwarding)
 - **Health Check**: `GET /health`
 
-### Documentation Service
+### Documentation Service (Static React App)
 
 - **Service Name**: `atlas-docs`
-- **Backend URL**: `http://atlas-docs:3001`
+- **Backend URL**: `http://atlas-docs:80`
 - **Route Path**: `/docs`
 - **Strip Path**: `false` (preserves `/docs` prefix)
-- **Health Check**: `GET /`
+- **Server**: Nginx serving static React application
+- **Health Check**: `GET /index.html`
 
 ## Verification
 

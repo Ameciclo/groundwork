@@ -28,7 +28,7 @@ KONG_ADMIN_URL="${KONG_ADMIN_URL:-http://localhost:8001}"
 CYCLIST_PROFILE_HOST="${CYCLIST_PROFILE_HOST:-atlas-cyclist-profile}"
 CYCLIST_PROFILE_PORT="${CYCLIST_PROFILE_PORT:-3000}"
 DOCS_HOST="${DOCS_HOST:-atlas-docs}"
-DOCS_PORT="${DOCS_PORT:-3001}"
+DOCS_PORT="${DOCS_PORT:-80}"
 
 echo "🔧 Configuring Kong Gateway for Atlas Services"
 echo "Kong Admin URL: $KONG_ADMIN_URL"

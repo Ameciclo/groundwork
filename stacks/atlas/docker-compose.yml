@@ -13,9 +13,10 @@
 #
 # Optional Environment Variables:
 #   - CYCLIST_PROFILE_PORT: Cyclist Profile API port (default: 3000)
-#   - DOCS_PORT: Documentation site port (default: 3001)
 #   - LOG_LEVEL: Logging level (default: info)
 #   - IMAGE_TAG: Docker image tag for all services (default: latest)
+#
+# Note: Docs app uses nginx and always listens on port 80 (not configurable)
 #
 # Setup Instructions:
 #   1. Ensure Kong network exists: docker network ls | grep kong-gateway_kong-net
@@ -24,7 +25,7 @@
 #   4. Deploy stack
 #   5. Configure Kong routes to point to services:
 #      - cyclist-profile service: http://atlas-cyclist-profile:3000
-#      - docs service: http://atlas-docs:3001
+#      - docs service: http://atlas-docs:80
 #
 # Webhook Setup (Service-Level):
 #   Each service has its own webhook for independent deployments:
@@ -48,13 +49,13 @@
 #     Service: http://atlas-cyclist-profile:3000
 #     Route: /api/cyclist-profile
 #
-#   Documentation:
-#     Service: http://atlas-docs:3001
+#   Documentation (nginx static site):
+#     Service: http://atlas-docs:80
 #     Route: /docs
 #
 # Health Checks:
 #   API:   curl http://atlas-cyclist-profile:3000/health
-#   Docs:  curl http://atlas-docs:3001/
+#   Docs:  curl http://atlas-docs/
 
 services:
   # ============================================================================
@@ -102,7 +103,8 @@ services:
       - kong-net
 
     depends_on:
-      - cyclist-profile-migrate
+      cyclist-profile-migrate:
+        condition: service_completed_successfully
 
     restart: unless-stopped
 
@@ -143,6 +145,7 @@ services:
     container_name: atlas-docs
 
     # Expose port internally to Kong network only (no host port binding)
+    # Nginx listens on port 80 (hardcoded in nginx.conf)
     expose:
       - "80"
 
@@ -156,15 +159,15 @@ services:
         [
           "CMD",
           "wget",
-          "--quiet",
+          "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://localhost:80/index.html",
+          "http://localhost/",
         ]
       interval: 30s
       timeout: 10s
-      start_period: 60s
-      retries: 5
+      start_period: 20s
+      retries: 3
 
     deploy:
       resources:

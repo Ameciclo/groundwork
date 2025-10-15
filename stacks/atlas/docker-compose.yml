@@ -135,8 +135,9 @@ services:
         max-file: "3"
 
   # ============================================================================
-  # Documentation Service
+  # Documentation Service - Static React App
   # ============================================================================
+  # Serves static React documentation via Nginx on port 80
   docs:
     image: ghcr.io/ameciclo/atlas/docs:${IMAGE_TAG:-latest}
     container_name: atlas-docs
@@ -158,12 +159,12 @@ services:
           "--quiet",
           "--tries=1",
           "--spider",
-          "http://localhost:80/",
+          "http://localhost:80/index.html",
         ]
       interval: 30s
       timeout: 10s
-      start_period: 20s
-      retries: 3
+      start_period: 60s
+      retries: 5
 
     deploy:
       resources:

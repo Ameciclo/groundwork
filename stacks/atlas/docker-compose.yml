@@ -9,7 +9,9 @@
 #
 # Required Environment Variables:
 #   - DATABASE_URL: Full PostgreSQL connection string to managed database
-#     Example: postgresql://user:password@host:5432/atlas
+#     Example: postgresql://user:password@host:5432/atlas?sslmode=require
+#   - DATABASE_SSL_CA: Path to CA certificate for SSL connections (for self-signed certs)
+#     Example: /run/secrets/pg-ca-cert
 #
 # Optional Environment Variables:
 #   - CYCLIST_PROFILE_PORT: Cyclist Profile API port (default: 3000)
@@ -21,10 +23,13 @@
 #
 # Setup Instructions:
 #   1. Ensure Kong network exists: docker network ls | grep kong-gateway_kong-net
-#   2. In Portainer, create new stack named "atlas"
-#   3. Set DATABASE_URL in environment variables
-#   4. Deploy stack
-#   5. Configure Kong routes to point to services:
+#   2. Create Docker secret for PostgreSQL CA certificate:
+#      - Download CA cert from DigitalOcean: https://docs.digitalocean.com/products/databases/postgresql/how-to/manage-certificates/
+#      - Create secret: docker secret create pg-ca-cert /path/to/ca-certificate.crt
+#   3. In Portainer, create new stack named "atlas"
+#   4. Set DATABASE_URL in environment variables
+#   5. Deploy stack
+#   6. Configure Kong routes to point to services:
 #      - cyclist-profile service: http://atlas-cyclist-profile:3000
 #      - cyclist-counts service: http://atlas-cyclist-counts:3002
 #      - docs service: http://atlas-docs:80
@@ -70,6 +75,11 @@
 #   Cyclist Counts:    curl http://atlas-cyclist-counts:3002/health
 #   Docs:              curl http://atlas-docs:80/index.html
 
+secrets:
+  pg-ca-cert:
+    external: true
+    name: pg-ca-cert
+
 services:
   # ============================================================================
   # Cyclist Profile Service - Migration
@@ -82,10 +92,14 @@ services:
 
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SSL_CA: /run/secrets/pg-ca-cert
       NODE_ENV: production
 
     networks:
       - kong-net
+
+    secrets:
+      - pg-ca-cert
 
     restart: "no"
 
@@ -107,6 +121,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PORT: ${CYCLIST_PROFILE_PORT:-3000}
       DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SSL_CA: /run/secrets/pg-ca-cert
 
     # Expose port internally to Kong network only (no host port binding)
     expose:
@@ -114,6 +129,9 @@ services:
 
     networks:
       - kong-net
+
+    secrets:
+      - pg-ca-cert
 
     depends_on:
       - cyclist-profile-migrate
@@ -159,10 +177,14 @@ services:
 
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SSL_CA: /run/secrets/pg-ca-cert
       NODE_ENV: production
 
     networks:
       - kong-net
+
+    secrets:
+      - pg-ca-cert
 
     restart: "no"
 
@@ -184,6 +206,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PORT: ${CYCLIST_COUNTS_PORT:-3002}
       DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SSL_CA: /run/secrets/pg-ca-cert
 
     # Expose port internally to Kong network only (no host port binding)
     expose:
@@ -191,6 +214,9 @@ services:
 
     networks:
       - kong-net
+
+    secrets:
+      - pg-ca-cert
 
     depends_on:
       - cyclist-counts-migrate

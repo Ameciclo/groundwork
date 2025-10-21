@@ -13,6 +13,7 @@
 #
 # Optional Environment Variables:
 #   - CYCLIST_PROFILE_PORT: Cyclist Profile API port (default: 3000)
+#   - CYCLIST_COUNTS_PORT: Cyclist Counts API port (default: 3002)
 #   - LOG_LEVEL: Logging level (default: info)
 #   - IMAGE_TAG: Docker image tag for all services (default: latest)
 #
@@ -25,6 +26,7 @@
 #   4. Deploy stack
 #   5. Configure Kong routes to point to services:
 #      - cyclist-profile service: http://atlas-cyclist-profile:3000
+#      - cyclist-counts service: http://atlas-cyclist-counts:3002
 #      - docs service: http://atlas-docs:80
 #
 # Webhook Setup (Service-Level):
@@ -36,11 +38,17 @@
 #   3. Copy webhook URL
 #   4. Add to GitHub secrets as PORTAINER_WEBHOOK_CYCLIST_PROFILE
 #
-#   Docs:
-#   5. In Portainer: Containers → atlas-docs
+#   Cyclist Counts:
+#   5. In Portainer: Containers → atlas-cyclist-counts
 #   6. Enable webhook for the service
 #   7. Copy webhook URL
-#   8. Add to GitHub secrets as PORTAINER_WEBHOOK_DOCS
+#   8. Add to GitHub secrets as PORTAINER_WEBHOOK_CYCLIST_COUNTS
+#
+#   Docs:
+#   9. In Portainer: Containers → atlas-docs
+#   10. Enable webhook for the service
+#   11. Copy webhook URL
+#   12. Add to GitHub secrets as PORTAINER_WEBHOOK_DOCS
 #
 # Kong Gateway Configuration:
 #   After deployment, configure Kong routes:
@@ -49,13 +57,18 @@
 #     Service: http://atlas-cyclist-profile:3000
 #     Route: /api/cyclist-profile
 #
-#   Documentation (nginx static site):
+#   Cyclist Counts API:
+#     Service: http://atlas-cyclist-counts:3002
+#     Route: /api/cyclist-counts
+#
+#   Documentation:
 #     Service: http://atlas-docs:80
 #     Route: /docs
 #
 # Health Checks:
-#   API:   curl http://atlas-cyclist-profile:3000/health
-#   Docs:  curl http://atlas-docs/
+#   Cyclist Profile:   curl http://atlas-cyclist-profile:3000/health
+#   Cyclist Counts:    curl http://atlas-cyclist-counts:3002/health
+#   Docs:              curl http://atlas-docs:80/index.html
 
 services:
   # ============================================================================
@@ -114,6 +127,83 @@ services:
           "node",
           "-e",
           "require('http').get('http://localhost:${CYCLIST_PROFILE_PORT:-3000}/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================================================
+  # Cyclist Counts Service - Migration
+  # ============================================================================
+  cyclist-counts-migrate:
+    image: ghcr.io/ameciclo/atlas/cyclist-counts:${IMAGE_TAG:-latest}
+    container_name: atlas-cyclist-counts-migrate
+
+    command: node packages/database/dist/migrate.js
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: production
+
+    networks:
+      - kong-net
+
+    restart: "no"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================================================
+  # Cyclist Counts Service - API
+  # ============================================================================
+  cyclist-counts:
+    image: ghcr.io/ameciclo/atlas/cyclist-counts:${IMAGE_TAG:-latest}
+    container_name: atlas-cyclist-counts
+
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${CYCLIST_COUNTS_PORT:-3002}
+      DATABASE_URL: ${DATABASE_URL}
+
+    # Expose port internally to Kong network only (no host port binding)
+    expose:
+      - "${CYCLIST_COUNTS_PORT:-3002}"
+
+    networks:
+      - kong-net
+
+    depends_on:
+      - cyclist-counts-migrate
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:${CYCLIST_COUNTS_PORT:-3002}/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))",
         ]
       interval: 30s
       timeout: 10s

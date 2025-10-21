@@ -47,7 +47,32 @@ curl -X POST http://localhost:8001/services/cyclist-profile/routes \
   }'
 ```
 
-#### 3. Create Documentation Service
+#### 3. Create Cyclist Counts Service
+
+```bash
+curl -X POST http://localhost:8001/services \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "cyclist-counts",
+    "url": "http://atlas-cyclist-counts:3002",
+    "tags": ["atlas", "api"]
+  }'
+```
+
+#### 4. Create Cyclist Counts Route
+
+```bash
+curl -X POST http://localhost:8001/services/cyclist-counts/routes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "cyclist-counts-route",
+    "paths": ["/api/cyclist-counts"],
+    "strip_path": true,
+    "tags": ["atlas", "api"]
+  }'
+```
+
+#### 5. Create Documentation Service
 
 ```bash
 curl -X POST http://localhost:8001/services \
@@ -59,7 +84,7 @@ curl -X POST http://localhost:8001/services \
   }'
 ```
 
-#### 4. Create Documentation Route
+#### 6. Create Documentation Route
 
 ```bash
 curl -X POST http://localhost:8001/services/atlas-docs/routes \
@@ -80,6 +105,14 @@ curl -X POST http://localhost:8001/services/atlas-docs/routes \
 - **Backend URL**: `http://atlas-cyclist-profile:3000`
 - **Route Path**: `/api/cyclist-profile`
 - **Strip Path**: `true` (removes `/api/cyclist-profile` prefix before forwarding)
+- **Health Check**: `GET /health`
+
+### Cyclist Counts Service
+
+- **Service Name**: `cyclist-counts`
+- **Backend URL**: `http://atlas-cyclist-counts:3002`
+- **Route Path**: `/api/cyclist-counts`
+- **Strip Path**: `true` (removes `/api/cyclist-counts` prefix before forwarding)
 - **Health Check**: `GET /health`
 
 ### Documentation Service (Static React App)

@@ -18,8 +18,10 @@
 #   - KONG_ADMIN_URL: Kong Admin API endpoint (default: http://localhost:8001)
 #   - CYCLIST_PROFILE_HOST: Cyclist Profile service host (default: atlas-cyclist-profile)
 #   - CYCLIST_PROFILE_PORT: Cyclist Profile service port (default: 3000)
+#   - CYCLIST_COUNTS_HOST: Cyclist Counts service host (default: atlas-cyclist-counts)
+#   - CYCLIST_COUNTS_PORT: Cyclist Counts service port (default: 3002)
 #   - DOCS_HOST: Docs service host (default: atlas-docs)
-#   - DOCS_PORT: Docs service port (default: 3001)
+#   - DOCS_PORT: Docs service port (default: 80)
 
 set -e
 
@@ -27,6 +29,8 @@ set -e
 KONG_ADMIN_URL="${KONG_ADMIN_URL:-http://localhost:8001}"
 CYCLIST_PROFILE_HOST="${CYCLIST_PROFILE_HOST:-atlas-cyclist-profile}"
 CYCLIST_PROFILE_PORT="${CYCLIST_PROFILE_PORT:-3000}"
+CYCLIST_COUNTS_HOST="${CYCLIST_COUNTS_HOST:-atlas-cyclist-counts}"
+CYCLIST_COUNTS_PORT="${CYCLIST_COUNTS_PORT:-3002}"
 DOCS_HOST="${DOCS_HOST:-atlas-docs}"
 DOCS_PORT="${DOCS_PORT:-80}"
 
@@ -58,6 +62,36 @@ curl -s -X POST "$KONG_ADMIN_URL/services/cyclist-profile/routes" \
   -d "{
     \"name\": \"cyclist-profile-route\",
     \"paths\": [\"/api/cyclist-profile\"],
+    \"strip_path\": true,
+    \"tags\": [\"atlas\", \"api\"]
+  }" | jq '.' || echo "  ⚠️  Route may already exist"
+
+echo ""
+
+# ============================================================================
+# Cyclist Counts Service Configuration
+# ============================================================================
+echo "📋 Setting up Cyclist Counts Service..."
+
+# Create Cyclist Counts Service
+echo "  → Creating service: cyclist-counts"
+curl -s -X POST "$KONG_ADMIN_URL/services" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"cyclist-counts\",
+    \"url\": \"http://$CYCLIST_COUNTS_HOST:$CYCLIST_COUNTS_PORT\",
+    \"tags\": [\"atlas\", \"api\"]
+  }" | jq '.' || echo "  ⚠️  Service may already exist"
+
+echo ""
+
+# Create Cyclist Counts Route
+echo "  → Creating route: /api/cyclist-counts"
+curl -s -X POST "$KONG_ADMIN_URL/services/cyclist-counts/routes" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"cyclist-counts-route\",
+    \"paths\": [\"/api/cyclist-counts\"],
     \"strip_path\": true,
     \"tags\": [\"atlas\", \"api\"]
   }" | jq '.' || echo "  ⚠️  Route may already exist"

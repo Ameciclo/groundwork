@@ -104,6 +104,9 @@ services:
 
     restart: "no"
 
+    deploy:
+      replicas: 0
+
     logging:
       driver: "json-file"
       options:
@@ -187,6 +190,9 @@ services:
       - pg-ca-cert
 
     restart: "no"
+
+    deploy:
+      replicas: 0
 
     logging:
       driver: "json-file"

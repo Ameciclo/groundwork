@@ -8,7 +8,7 @@ postgresql:
 # Kong Configuration
 env:
   database: postgres
-  pg_conninfo: "host=ameciclo-postgres.privatelink.postgres.database.azure.com port=5432 dbname=kong user=psqladmin password=YourSecurePassword123! sslmode=require"
+  pg_conninfo: "host=ameciclo-postgres.privatelink.postgres.database.azure.com port=5432 dbname=kong user=psqladmin password=YourSecurePassword123! sslmode=require sslrootcert=/etc/ssl/certs/ca-certificates.crt"
   proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
   proxy_access_log: "/dev/stdout"
   proxy_error_log: "/dev/stderr"

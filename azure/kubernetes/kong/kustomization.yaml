@@ -13,3 +13,13 @@ helmCharts:
     releaseName: kong
     namespace: kong
     valuesFile: values.yaml
+
+# Create ConfigMap with Azure CA certificates
+configMapGenerator:
+  - name: azure-ca-certs
+    files:
+      - ca-certificates.crt
+
+# Patch the Kong deployment to mount CA certificates
+patchesStrategicMerge:
+  - deployment-patch.yaml

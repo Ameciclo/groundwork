@@ -1,0 +1,77 @@
+# Kustomization for Kong Helm Chart
+# This file allows ArgoCD to manage Kong deployments
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kong
+
+# Use Helm to render the Kong chart
+helmCharts:
+  - name: kong
+    repo: https://charts.konghq.com
+    version: 2.36.3
+    releaseName: kong
+    namespace: kong
+    valuesFile: values.yaml
+    valuesInline:
+      # PostgreSQL Configuration
+      postgresql:
+        enabled: false
+
+      # Kong Configuration
+      env:
+        database: postgres
+        pg_host: ameciclo-postgres.postgres.database.azure.com
+        pg_port: 5432
+        pg_database: kong
+        pg_user: psqladmin
+        pg_password: YourSecurePassword123!
+        pg_ssl: "on"
+        proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
+        admin_listen: "0.0.0.0:8001"
+        admin_gui_listen: "0.0.0.0:8002"
+        admin_gui_auth: "basic-auth"
+        log_level: "notice"
+
+      # Service Configuration
+      proxy:
+        type: LoadBalancer
+        ports:
+          http:
+            port: 80
+            targetPort: 8000
+          https:
+            port: 443
+            targetPort: 8443
+
+      admin:
+        type: NodePort
+        ports:
+          admin:
+            port: 8001
+            targetPort: 8001
+          admin_gui:
+            port: 8002
+            targetPort: 8002
+
+      # Resource Limits
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+
+      replicaCount: 1
+
+# Reference the secret for PostgreSQL credentials
+secretGenerator:
+  - name: kong-postgres-secret
+    namespace: kong
+    literals:
+      - username=psqladmin
+      - password=YourSecurePassword123!
+      - host=ameciclo-postgres.postgres.database.azure.com
+      - port=5432
+      - database=kong

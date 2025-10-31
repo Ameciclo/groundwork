@@ -1,0 +1,85 @@
+# Kong Helm Chart Values
+# Reference: https://github.com/Kong/charts/blob/main/charts/kong/values.yaml
+
+# Disable embedded PostgreSQL - we use Azure Managed PostgreSQL
+postgresql:
+  enabled: false
+
+# Kong Configuration
+env:
+  database: postgres
+  pg_host: ameciclo-postgres.postgres.database.azure.com
+  pg_port: 5432
+  pg_database: kong
+  pg_user: psqladmin
+  pg_password: YourSecurePassword123!
+  pg_ssl: "on"
+  proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
+  proxy_access_log: "/dev/stdout"
+  proxy_error_log: "/dev/stderr"
+  admin_listen: "0.0.0.0:8001"
+  admin_access_log: "/dev/stdout"
+  admin_error_log: "/dev/stderr"
+  admin_gui_listen: "0.0.0.0:8002"
+  admin_gui_auth: "basic-auth"
+  log_level: "notice"
+  lua_ssl_trusted_certificate: "system"
+
+# Proxy Service (API Gateway)
+proxy:
+  type: LoadBalancer
+  ports:
+    http:
+      port: 80
+      targetPort: 8000
+    https:
+      port: 443
+      targetPort: 8443
+
+# Admin Service (Management API)
+admin:
+  type: NodePort
+  ports:
+    admin:
+      port: 8001
+      targetPort: 8001
+    admin_gui:
+      port: 8002
+      targetPort: 8002
+
+# Manager Service (Web UI)
+manager:
+  type: NodePort
+  ports:
+    manager:
+      port: 8002
+      targetPort: 8002
+
+# Resource Limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Replica Count
+replicaCount: 1
+
+# Image Configuration
+image:
+  repository: kong
+  tag: "3.4"
+  pullPolicy: IfNotPresent
+
+# Ingress (optional - for external access)
+ingress:
+  enabled: false
+  # Uncomment to enable ingress
+  # className: nginx
+  # hosts:
+  #   - host: kong.example.com
+  #     paths:
+  #       - path: /
+  #         pathType: Prefix

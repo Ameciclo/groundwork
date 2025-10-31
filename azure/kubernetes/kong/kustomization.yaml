@@ -29,6 +29,7 @@ helmCharts:
         pg_ssl: "on"
         pg_ssl_required: "on"
         pg_ssl_verify: "off"
+        pg_ssl_sslmode: "require"
         proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
         admin_listen: "0.0.0.0:8001"
         admin_gui_listen: "0.0.0.0:8002"

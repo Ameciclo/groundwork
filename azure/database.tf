@@ -12,6 +12,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql_main" {
   private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
   virtual_network_id    = azurerm_virtual_network.ameciclo.id
   resource_group_name   = azurerm_resource_group.ameciclo.name
+  registration_enabled  = false
 
   tags = var.tags
 }
@@ -22,6 +23,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql_k3s" {
   private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
   virtual_network_id    = azurerm_virtual_network.k3s.id
   resource_group_name   = azurerm_resource_group.ameciclo.name
+  registration_enabled  = false
 
   tags = var.tags
 }
@@ -72,6 +74,16 @@ resource "azurerm_postgresql_flexible_server_database" "kong" {
   server_id = azurerm_postgresql_flexible_server.postgresql.id
   charset   = "UTF8"
   collation = "en_US.utf8"
+}
+
+# Private DNS A Record for PostgreSQL
+# This maps the private endpoint hostname to the private IP address
+resource "azurerm_private_dns_a_record" "postgresql" {
+  name                = "ameciclo-postgres"
+  zone_name           = azurerm_private_dns_zone.postgresql.name
+  resource_group_name = azurerm_resource_group.ameciclo.name
+  ttl                 = 300
+  records             = ["10.10.2.4"]
 }
 
 # Note: Firewall rules are not needed when using private endpoints

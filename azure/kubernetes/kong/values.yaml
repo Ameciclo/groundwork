@@ -15,6 +15,7 @@ env:
   pg_password: YourSecurePassword123!
   pg_ssl: "on"
   pg_ssl_verify: "off"
+  pg_ssl_required: "true"
   proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
   proxy_access_log: "/dev/stdout"
   proxy_error_log: "/dev/stderr"

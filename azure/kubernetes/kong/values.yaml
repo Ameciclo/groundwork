@@ -28,9 +28,8 @@ env:
   log_level: "notice"
   lua_ssl_trusted_certificate: "system"
 
-# Wait Container Configuration
-waitContainer:
-  enabled: false
+# Init Containers Configuration
+initContainers: []
 
 # Proxy Service (API Gateway)
 proxy:

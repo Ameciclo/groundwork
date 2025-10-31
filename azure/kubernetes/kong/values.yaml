@@ -28,8 +28,10 @@ env:
   log_level: "notice"
   lua_ssl_trusted_certificate: "system"
 
-# Init Containers Configuration
-initContainers: []
+# Deployment Configuration
+deployment:
+  kong:
+    initContainers: []
 
 # Proxy Service (API Gateway)
 proxy:

@@ -1,0 +1,38 @@
+# ArgoCD Application for Kong
+# This tells ArgoCD to manage Kong deployments from this Git repository
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kong
+  namespace: argocd
+spec:
+  project: default
+
+  # Source: Where to get the Kong configuration
+  source:
+    repoURL: https://github.com/ameciclo/groundwork
+    targetRevision: main
+    path: azure/kubernetes/kong
+
+    # Use Kustomize to render the Helm chart
+    plugin:
+      name: kustomize-helm
+
+  # Destination: Where to deploy Kong
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kong
+
+  # Sync Policy: How ArgoCD should manage Kong
+  syncPolicy:
+    automated:
+      prune: true # Delete resources not in Git
+      selfHeal: true # Resync if cluster state drifts
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

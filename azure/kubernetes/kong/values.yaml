@@ -68,10 +68,10 @@ image:
   tag: "3.4"
   pullPolicy: IfNotPresent
 
-# Disable wait-for-db init container
+# Override init containers to remove wait-for-db
 # Kong will handle database migrations automatically
-waitImage:
-  enabled: false
+podSpec:
+  initContainers: []
 
 # Ingress (optional - for external access)
 ingress:

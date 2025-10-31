@@ -2,10 +2,20 @@
 - name: Install Docker and Portainer in Swarm mode
   hosts: all
   become: true
+  vars:
+    portainer_version: "2.21.3" # Pin Portainer version
+
   tasks:
+    - name: Remove conflicting Docker repository sources (cleanup old installations)
+      shell: |
+        rm -f /etc/apt/sources.list.d/docker.list
+        rm -f /etc/apt/sources.list.d/docker.sources
+      changed_when: false
+
     - name: Update apt package index
       apt:
         update_cache: yes
+        cache_valid_time: 3600
 
     - name: Install required dependencies
       apt:
@@ -14,29 +24,46 @@
           - ca-certificates
           - curl
           - software-properties-common
+          - gnupg
+          - lsb-release
         state: present
 
-    - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+    - name: Create Docker GPG keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
 
-    - name: Add Docker repository
+    - name: Add Docker GPG key (modern method)
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository (modern method with signed-by)
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         update_cache: yes
 
-    - name: Install Docker
+    - name: Install Docker (if not already installed)
       apt:
         name: docker-ce
         state: present
 
+    - name: Install Docker Compose (standalone)
+      shell: |
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+      args:
+        creates: /usr/local/bin/docker-compose
+
     - name: Start and enable Docker service
-      service:
+      systemd:
         name: docker
         state: started
         enabled: yes
+        daemon_reload: yes
 
     - name: Add user to Docker group
       user:
@@ -44,10 +71,12 @@
         groups: docker
         append: yes
 
-    - name: Get private IP address
-      shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)10\.\d+(\.\d+){2}'
+    - name: Get private IP address (auto-detect interface)
+      shell: |
+        ip -4 addr show | grep -oP '(?<=inet\s)10\.\d+(\.\d+){2}' | head -1
       register: private_ip
       changed_when: false
+      failed_when: private_ip.stdout == ""
 
     - name: Initialize Docker Swarm
       command: "docker swarm init --advertise-addr {{ private_ip.stdout }}"
@@ -62,7 +91,7 @@
           version: "3.8"
           services:
             portainer:
-              image: portainer/portainer-ce:latest
+              image: portainer/portainer-ce:{{ portainer_version }}
               command: -H tcp://tasks.portainer_agent:9001 --tlsskipverify
               ports:
                 - "9000:9000"
@@ -78,9 +107,12 @@
                   constraints: [node.role == manager]
                 restart_policy:
                   condition: any
+                update_config:
+                  parallelism: 1
+                  delay: 10s
 
             portainer_agent:
-              image: portainer/agent:latest
+              image: portainer/agent:{{ portainer_version }}
               environment:
                 # REQUIRED: Should be equal to the service name prefixed by tasks.
                 - AGENT_CLUSTER_ADDR=tasks.portainer_agent
@@ -93,6 +125,9 @@
                 mode: global
                 restart_policy:
                   condition: any
+                update_config:
+                  parallelism: 1
+                  delay: 10s
 
           networks:
             portainer_network:
@@ -112,5 +147,19 @@
       wait_for:
         host: "{{ ansible_host }}"
         port: 9000
-        delay: 10
-        timeout: 300
+        delay: 15
+        timeout: 600
+        connect_timeout: 10
+
+    - name: Display Portainer access information
+      debug:
+        msg: |
+          ✅ Portainer has been deployed successfully!
+
+          Access Portainer at: http://{{ ansible_host }}:9000
+
+          Next steps:
+          1. Open the URL above in your browser
+          2. Create your admin account
+          3. Connect to the Docker Swarm
+          4. Start deploying your services

@@ -1,0 +1,27 @@
+---
+# Ameciclo namespace for main services
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ameciclo
+  labels:
+    name: ameciclo
+
+---
+# Monitoring namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+
+---
+# Ingress namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    name: ingress-nginx
+

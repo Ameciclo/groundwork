@@ -36,8 +36,10 @@ helmCharts:
         admin_gui_auth: "basic-auth"
         log_level: "notice"
 
-      # Init Containers Configuration
-      initContainers: []
+      # Deployment Configuration
+      deployment:
+        kong:
+          initContainers: []
 
       # Service Configuration
       proxy:

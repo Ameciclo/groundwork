@@ -1,6 +1,7 @@
 all:
   hosts:
-    ameciclo-1:
-      ansible_host: 159.203.167.63
-      ansible_user: root
+    ameciclo-azure:
+      ansible_host: 20.172.14.198
+      ansible_user: azureuser
       ansible_ssh_private_key_file: ~/.ssh/id_rsa
+      ansible_become_password: "" # Use SSH key-based sudo (no password needed)

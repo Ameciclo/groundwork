@@ -1,0 +1,96 @@
+---
+# Kestra PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kestra-data-pvc
+  namespace: ameciclo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Kestra Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kestra
+  namespace: ameciclo
+  labels:
+    app: kestra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kestra
+  template:
+    metadata:
+      labels:
+        app: kestra
+    spec:
+      containers:
+      - name: kestra
+        image: kestra/kestra:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: JAVA_OPTS
+          value: "-Xms256m -Xmx512m"
+        volumeMounts:
+        - name: kestra-data
+          mountPath: /app/storage
+        - name: kestra-plugins
+          mountPath: /app/plugins
+        - name: kestra-db
+          mountPath: /app/data
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+      volumes:
+      - name: kestra-data
+        persistentVolumeClaim:
+          claimName: kestra-data-pvc
+      - name: kestra-plugins
+        emptyDir: {}
+      - name: kestra-db
+        emptyDir: {}
+
+---
+# Kestra Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kestra
+  namespace: ameciclo
+  labels:
+    app: kestra
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: kestra
+

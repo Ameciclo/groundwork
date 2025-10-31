@@ -1,0 +1,57 @@
+# Azure Authentication
+# Get these values from your Azure Service Principal
+azure_subscription_id = "your-subscription-id"
+azure_client_id       = "your-client-id"
+azure_client_secret   = "your-client-secret"
+azure_tenant_id       = "your-tenant-id"
+
+# General Configuration
+environment = "production"
+region      = "eastus"
+project_name = "ameciclo"
+
+# Resource Group
+resource_group_name = "ameciclo-rg"
+
+# Virtual Network
+vnet_name           = "ameciclo-vnet"
+vnet_address_space  = ["10.10.0.0/16"]
+aks_subnet_name     = "aks-subnet"
+aks_subnet_prefix   = ["10.10.1.0/24"]
+database_subnet_name = "database-subnet"
+database_subnet_prefix = ["10.10.2.0/24"]
+
+# AKS Cluster
+aks_cluster_name = "ameciclo-aks"
+kubernetes_version = "1.32"
+node_count       = 2
+vm_size          = "Standard_B2s"
+max_node_count   = 5
+min_node_count   = 2
+
+# PostgreSQL Database
+postgresql_server_name = "ameciclo-postgres"
+postgresql_version     = "16"
+postgresql_sku_name    = "B_Standard_B1ms"
+postgresql_storage_mb  = 32768
+postgresql_admin_username = "psqladmin"
+postgresql_admin_password = "YourSecurePassword123!"
+
+# Storage Account
+# Note: Must be globally unique and lowercase (3-24 characters)
+storage_account_name = "ameciclostorage"
+storage_account_tier = "Standard"
+storage_account_replication_type = "LRS"
+
+# Container Registry
+# Note: Must be globally unique and lowercase (5-50 characters)
+container_registry_name = "amecicloregistry"
+container_registry_sku  = "Standard"
+
+# Tags
+tags = {
+  Environment = "production"
+  Project     = "ameciclo"
+  ManagedBy   = "terraform"
+}
+

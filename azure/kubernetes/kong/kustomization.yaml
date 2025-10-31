@@ -27,6 +27,7 @@ helmCharts:
         pg_user: psqladmin
         pg_password: YourSecurePassword123!
         pg_ssl: "on"
+        PGSSLMODE: "require"
         proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
         admin_listen: "0.0.0.0:8001"
         admin_gui_listen: "0.0.0.0:8002"

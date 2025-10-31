@@ -36,6 +36,10 @@ helmCharts:
         admin_gui_auth: "basic-auth"
         log_level: "notice"
 
+      # Wait Container Configuration
+      waitContainer:
+        enabled: false
+
       # Service Configuration
       proxy:
         type: LoadBalancer

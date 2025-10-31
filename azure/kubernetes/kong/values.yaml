@@ -68,6 +68,30 @@ image:
   tag: "3.4"
   pullPolicy: IfNotPresent
 
+# Init Container Configuration for wait-for-db
+# These environment variables are passed to the wait-for-db init container
+initContainers:
+  - name: wait-for-db
+    env:
+      - name: KONG_PG_HOST
+        value: "ameciclo-postgres.privatelink.postgres.database.azure.com"
+      - name: KONG_PG_PORT
+        value: "5432"
+      - name: KONG_PG_DATABASE
+        value: "kong"
+      - name: KONG_PG_USER
+        value: "psqladmin"
+      - name: KONG_PG_PASSWORD
+        value: "YourSecurePassword123!"
+      - name: KONG_PG_SSL
+        value: "on"
+      - name: KONG_PG_SSL_VERIFY
+        value: "off"
+      - name: PGSSLMODE
+        value: "require"
+      - name: PGSSLROOTCERT
+        value: "/etc/ssl/certs/ca-certificates.crt"
+
 # Ingress (optional - for external access)
 ingress:
   enabled: false

@@ -13,7 +13,7 @@ env:
   pg_database: kong
   pg_user: psqladmin
   pg_password: YourSecurePassword123!
-  pg_ssl_sslmode: "require"
+  pg_ssl: "on"
   proxy_listen: "0.0.0.0:80, 0.0.0.0:443 ssl"
   proxy_access_log: "/dev/stdout"
   proxy_error_log: "/dev/stderr"

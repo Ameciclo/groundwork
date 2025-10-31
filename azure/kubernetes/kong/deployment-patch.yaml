@@ -6,24 +6,18 @@ spec:
   template:
     spec:
       containers:
-      - name: proxy
-        volumeMounts:
-        - name: ca-certs
-          mountPath: /etc/ssl/certs
-          readOnly: true
-      - name: ingress-controller
-        volumeMounts:
-        - name: ca-certs
-          mountPath: /etc/ssl/certs
-          readOnly: true
-      initContainers:
-      - name: wait-for-db
-        volumeMounts:
-        - name: ca-certs
-          mountPath: /etc/ssl/certs
-          readOnly: true
+        - name: proxy
+          volumeMounts:
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+        - name: ingress-controller
+          volumeMounts:
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+      initContainers: []
       volumes:
-      - name: ca-certs
-        configMap:
-          name: azure-ca-certs
-
+        - name: ca-certs
+          configMap:
+            name: azure-ca-certs

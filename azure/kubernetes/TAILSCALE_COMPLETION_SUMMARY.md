@@ -80,6 +80,18 @@ k9s
 
 This will connect to your K3s cluster via the Tailscale VPN tunnel and show you all cluster resources interactively.
 
+**In k9s:**
+- Press `:` to open command palette
+- Type `ns` to switch namespaces
+- Type `pods` to view pods
+- Type `all` to view all resources across all namespaces
+- Press `?` for help
+
+**Note**: The default namespace is set to `argocd` so you see resources immediately. You can change it with:
+```bash
+kubectl config set-context ameciclo-azure-cluster --namespace=<namespace>
+```
+
 ## Architecture
 
 ```

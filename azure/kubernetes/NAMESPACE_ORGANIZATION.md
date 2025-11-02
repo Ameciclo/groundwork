@@ -12,9 +12,8 @@ Ameciclo's K3s cluster uses namespaces to organize infrastructure and applicatio
 - **Purpose**: GitOps continuous deployment
 - **Components**: ArgoCD Server, Controller, Repo Server, Redis
 - **Access**:
-  - HTTPS: https://argocd.tail118de4.ts.net (via Tailscale)
-  - HTTP: http://10.20.1.4:80 (direct IP)
-  - Short: https://argocd (requires /etc/hosts entry)
+  - HTTP: http://10.20.1.4:80 (direct IP via Tailscale VPN)
+  - HTTPS: https://10.20.1.4:443 (direct IP via Tailscale VPN)
 - **Credentials**: admin / 5y5Xlzpdu2k215Gd
 - **Managed by**: Helm chart
 

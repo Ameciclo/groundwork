@@ -38,13 +38,26 @@ Tailscale Kubernetes Operator has been successfully installed and configured on 
    tailscale status
    ```
 
-2. **Access ArgoCD**
-   ```bash
-   # Open in browser
-   http://argocd
-   
-   # Or use curl
-   curl http://argocd
+2. **Access ArgoCD - Choose one option:**
+
+   **Option 1: HTTPS (Recommended - Secure)**
+   ```
+   https://argocd.tail118de4.ts.net
+   ```
+
+   **Option 2: HTTP (Direct IP)**
+   ```
+   http://10.20.1.4:80
+   ```
+
+   **Option 3: Short hostname (requires /etc/hosts entry)**
+   ```
+   https://argocd
+   ```
+
+   To use short hostname, add to `/etc/hosts`:
+   ```
+   100.82.98.127 argocd argocd.tail118de4.ts.net
    ```
 
 3. **Login with your ArgoCD credentials**

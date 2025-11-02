@@ -1,16 +1,11 @@
 ---
-- name: Install K3s, ArgoCD, and Kong on Azure VM
+- name: Install K3s and ArgoCD on Azure VM
   hosts: all
   become: true
   vars:
     k3s_version: "v1.32.4+k3s1"
     argocd_version: "7.3.3"
     argocd_namespace: "argocd"
-    kong_namespace: "kong"
-    postgres_host: "{{ postgres_server_fqdn }}"
-    postgres_user: "{{ postgres_admin_user }}"
-    postgres_password: "{{ postgres_admin_password }}"
-    postgres_db: "kong"
 
   tasks:
     - name: Update apt package index
@@ -115,80 +110,6 @@
       register: argocd_password
       changed_when: false
 
-    - name: Create Kong namespace
-      shell: |
-        /usr/local/bin/k3s kubectl create namespace {{ kong_namespace }} --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
-      changed_when: false
-
-    - name: Add Kong Helm repository
-      shell: |
-        /usr/local/bin/helm repo add kong https://charts.konghq.com
-        /usr/local/bin/helm repo update
-      changed_when: false
-
-    - name: Create Kong values file
-      copy:
-        content: |
-          image:
-            repository: kong
-            tag: "3.4"
-
-          env:
-            database: postgres
-            pg_host: {{ postgres_host }}
-            pg_port: 5432
-            pg_user: {{ postgres_user }}
-            pg_password: {{ postgres_password }}
-            pg_database: {{ postgres_db }}
-
-          service:
-            type: LoadBalancer
-            ports:
-              http:
-                port: 80
-                targetPort: 8000
-              https:
-                port: 443
-                targetPort: 8443
-              admin:
-                port: 8001
-                targetPort: 8001
-
-          resources:
-            limits:
-              cpu: 500m
-              memory: 512Mi
-            requests:
-              cpu: 250m
-              memory: 256Mi
-
-          replicaCount: 1
-
-          postgresql:
-            enabled: false
-        dest: /tmp/kong-values.yaml
-
-    - name: Install Kong via Helm
-      shell: |
-        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-        /usr/local/bin/helm install kong kong/kong \
-          --namespace {{ kong_namespace }} \
-          --values /tmp/kong-values.yaml \
-          --timeout 10m
-      register: kong_install
-      changed_when: "'deployed' in kong_install.stdout or 'installed' in kong_install.stdout"
-      failed_when: kong_install.rc != 0 and 'cannot re-use a name' not in kong_install.stderr
-
-    - name: Wait for Kong to be ready
-      shell: |
-        /usr/local/bin/k3s kubectl get pods -n {{ kong_namespace }} -l app.kubernetes.io/name=kong -o jsonpath='{.items[0].status.phase}'
-      register: kong_status
-      until: kong_status.stdout == "Running" or kong_status.stdout == "Pending"
-      retries: 60
-      delay: 5
-      changed_when: false
-      ignore_errors: true
-
     - name: Get K3s cluster info
       shell: |
         echo "=== K3s Cluster Info ==="
@@ -201,10 +122,6 @@
         echo "Namespace: {{ argocd_namespace }}"
         echo "Initial Admin Password: {{ argocd_password.stdout }}"
         /usr/local/bin/k3s kubectl get svc -n {{ argocd_namespace }}
-        echo ""
-        echo "=== Kong Info ==="
-        echo "Namespace: {{ kong_namespace }}"
-        /usr/local/bin/k3s kubectl get svc -n {{ kong_namespace }}
       register: cluster_info
       changed_when: false
 

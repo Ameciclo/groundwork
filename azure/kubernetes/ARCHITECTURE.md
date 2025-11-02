@@ -1,6 +1,80 @@
 # Architecture Overview
 
-## System Architecture
+## Should ArgoCD be behind Kong?
+
+**Answer: NO** ❌
+
+ArgoCD should **NOT** be behind Kong. Here's why:
+
+1. **Different Purposes**: Kong manages external API traffic; ArgoCD manages internal cluster operations
+2. **Circular Dependency**: ArgoCD manages Kong, so Kong managing ArgoCD access creates a circular dependency
+3. **Operational Risk**: If Kong fails, you lose access to ArgoCD and can't deploy fixes
+4. **Security**: ArgoCD should be restricted to internal/VPN access only; Kong should be public-facing
+
+---
+
+## Recommended System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        INTERNET / USERS                         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  Kong Proxy     │
+                    │ (Port 30292)    │
+                    │ (Port 31150)    │
+                    │ 20.172.9.53     │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+   ┌────▼────┐         ┌─────▼──────┐      ┌─────▼──────┐
+   │ Service │         │ Service    │      │ Service    │
+   │   A     │         │    B       │      │    C       │
+   │ (Atlas) │         │ (Atlas)    │      │ (Atlas)    │
+   └─────────┘         └────────────┘      └────────────┘
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  PostgreSQL     │
+                    │  (Private VPC)  │
+                    │  10.10.2.4      │
+                    │  SSL Enabled    │
+                    └─────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    INTERNAL / VPN ONLY                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              ArgoCD (GitOps Management)                  │   │
+│  │  • Manages Kong configuration                           │   │
+│  │  • Manages all services                                 │   │
+│  │  • Manages cluster infrastructure                       │   │
+│  │  Access: http://10.20.1.4:80 (Traefik Ingress)         │   │
+│  │  Credentials: admin/5y5Xlzpdu2k215Gd                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              Kong Admin API                              │   │
+│  │  • Configure routes, services, plugins                  │   │
+│  │  • Access: http://10.20.1.4:8001 (internal only)        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              Kubernetes API                              │   │
+│  │  • Cluster management                                   │   │
+│  │  • Access: https://10.20.1.4:6443 (internal only)       │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Detailed Component Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -38,16 +112,17 @@
 │  │  └────────────────────────────────────────────────────┘ │  │
 │  │                                                          │  │
 │  │  Services:                                              │  │
-│  │  • ArgoCD Server: LoadBalancer (10.20.1.4:80)          │  │
-│  │  • Kong Proxy: LoadBalancer (10.20.1.4:80)             │  │
-│  │  • Kong Admin: NodePort (10.20.1.4:8001)               │  │
-│  │  • Kong Manager: NodePort (10.20.1.4:8002)             │  │
+│  │  • ArgoCD Server: Ingress (10.20.1.4:80)               │  │
+│  │  • Kong Proxy: NodePort (30292, 31150)                 │  │
+│  │  • Kong Manager: NodePort (32147)                      │  │
+│  │  • Kong Admin: NodePort (8001)                         │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │    Azure PostgreSQL Flexible Server                      │  │
-│  │    ameciclo-postgres.postgres.database.azure.com         │  │
+│  │    ameciclo-postgres.privatelink.postgres.database.azure.com
 │  │    B_Standard_B2s (2 vCores, 4 GB RAM)                   │  │
+│  │    SSL: ✅ Enabled (sslmode=require, verify-full)        │  │
 │  │                                                          │  │
 │  │    Databases:                                           │  │
 │  │    • kong (Kong configuration)                          │  │
@@ -82,6 +157,22 @@
                     └────────────────┘
 ```
 
+## Access Points
+
+### Public Access (via Azure NSG)
+- **Kong Proxy HTTP**: http://20.172.9.53:30292
+- **Kong Proxy HTTPS**: https://20.172.9.53:31150
+- **Kong Manager UI**: http://20.172.9.53:32147
+- **SSH**: ssh://20.172.9.53:22
+
+### Internal Access (VPC only)
+- **ArgoCD**: http://10.20.1.4:80
+- **Kong Admin API**: http://10.20.1.4:8001
+- **Kubernetes API**: https://10.20.1.4:6443
+- **PostgreSQL**: ameciclo-postgres.privatelink.postgres.database.azure.com:5432
+
+---
+
 ## Data Flow
 
 ### GitOps Workflow
@@ -99,7 +190,7 @@ ArgoCD watches repository
     ↓
 Detects changes
     ↓
-Kustomize renders Helm chart
+Helm chart renders
     ↓
 ArgoCD applies manifests
     ↓
@@ -111,20 +202,38 @@ Kong running with new configuration
 ### API Request Flow
 
 ```
-Client Request
+External Client Request
     ↓
-Kong Proxy (80/443)
+Kong Proxy (20.172.9.53:30292)
     ↓
-Kong Routes
+Kong Routes & Plugins
+    ├─ Authentication
+    ├─ Rate Limiting
+    ├─ Logging
+    └─ Request Transformation
     ↓
 Atlas Microservices
     ├─ cyclist-profile
     ├─ cyclist-counts
     └─ traffic-deaths
     ↓
-PostgreSQL Database
+PostgreSQL Database (SSL)
     ↓
 Response back to Client
+```
+
+### Management Flow
+
+```
+Developer/Admin
+    ↓
+ArgoCD UI (10.20.1.4:80)
+    ↓
+Kong Manager UI (20.172.9.53:32147)
+    ↓
+Kong Admin API (10.20.1.4:8001)
+    ↓
+Kong Configuration
 ```
 
 ## Network Architecture
@@ -247,14 +356,46 @@ Current Usage:
        └─ Kestra (from Git)
 ```
 
-## Security Layers
+## Security Architecture
+
+### Network Segmentation
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  PUBLIC ZONE (Internet-facing)                          │
+│  • Kong Proxy (30292, 31150)                            │
+│  • Kong Manager (32147)                                 │
+│  • SSH (22)                                             │
+└─────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────┐
+│  INTERNAL ZONE (VPC only)                               │
+│  • ArgoCD (80)                                          │
+│  • Kong Admin API (8001)                                │
+│  • Kubernetes API (6443)                                │
+└─────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────┐
+│  PRIVATE ZONE (VPC peering only)                        │
+│  • PostgreSQL (5432)                                    │
+│  • SSL/TLS encryption enabled                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Security Layers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Layer 1: Network Security                              │
 │  • Azure NSG (Network Security Group)                   │
-│  • Firewall rules for ports 80, 443, 8001, 8002, 6443  │
-│  • PostgreSQL firewall rules                            │
+│  • Firewall rules:                                      │
+│    - AllowSSH (22)                                      │
+│    - AllowHTTP (80)                                     │
+│    - AllowHTTPS (443)                                   │
+│    - AllowK3sAPI (6443)                                 │
+│    - AllowKongProxy (30292, 31150)                      │
+│    - AllowKongManager (32147)                           │
+│  • PostgreSQL firewall rules (VPC only)                 │
 └─────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -262,15 +403,54 @@ Current Usage:
 │  • RBAC (Role-Based Access Control)                     │
 │  • Network Policies                                     │
 │  • Service Accounts                                     │
+│  • Secrets for credentials                              │
 └─────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────┐
 │  Layer 3: Application Security                          │
 │  • Kong authentication plugins                          │
-│  • PostgreSQL credentials in secrets                    │
-│  • TLS/SSL for external traffic                         │
+│  • PostgreSQL SSL/TLS (sslmode=require, verify-full)    │
+│  • Kong Manager UI (internal access)                    │
+│  • ArgoCD authentication                                │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### PostgreSQL SSL Configuration
+
+```
+Connection String:
+  Host: ameciclo-postgres.privatelink.postgres.database.azure.com
+  Port: 5432
+  User: psqladmin
+  Database: kong
+  SSL Mode: require (or verify-full)
+
+Verified Modes:
+  ✅ sslmode=require - Connection encrypted
+  ✅ sslmode=verify-full - Certificate validation enabled
+```
+
+---
+
+## Why This Architecture?
+
+### Kong as Public API Gateway
+- ✅ Handles all external traffic
+- ✅ Provides rate limiting, authentication, logging
+- ✅ Can be scaled independently
+- ✅ Protects internal services
+
+### ArgoCD Internal Only
+- ✅ GitOps management tool
+- ✅ No need for public access
+- ✅ Manages Kong configuration
+- ✅ Manages all cluster resources
+
+### Separation of Concerns
+- ✅ Kong: External API management
+- ✅ ArgoCD: Internal cluster management
+- ✅ PostgreSQL: Data persistence (private)
+- ✅ Each component has single responsibility
 
 ---
 

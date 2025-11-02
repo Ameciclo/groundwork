@@ -6,11 +6,6 @@ This directory contains all Kubernetes manifests and Helm configurations managed
 
 ```
 kubernetes/
-├── kong/                # Kong API Gateway (GitOps managed)
-│   ├── kustomization.yaml
-│   ├── values.yaml
-│   ├── argocd-application.yaml
-│   └── README.md
 ├── namespaces/          # Kubernetes namespaces
 ├── atlas/               # Atlas microservices
 ├── kestra/              # Kestra workflow orchestration

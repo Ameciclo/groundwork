@@ -119,7 +119,43 @@ spec:
 - Proxy StatefulSet: `ts-argocd-tailscale-vb8bf` (Running)
 - Proxy pod: `ts-argocd-tailscale-vb8bf-0` (Running)
 
-## Step 7: Access ArgoCD via Tailscale ✅
+## Step 7: Create Tailscale Connector for Subnet Routes ✅
+
+To enable kubectl and k9s access from your local machine, create a Connector resource:
+
+```yaml
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: ameciclo-connector
+  namespace: tailscale
+spec:
+  subnetRouter:
+    advertiseRoutes:
+      - 10.20.0.0/16  # K3s cluster network
+      - 10.43.0.0/16  # K3s service network
+  tags:
+    - tag:k8s
+```
+
+Apply it:
+```bash
+kubectl apply -f azure/kubernetes/tailscale/connector.yaml
+```
+
+**Status**: ✅ Connector created and advertising subnet routes
+
+## Step 8: Approve Subnet Routes ✅
+
+1. Go to: https://login.tailscale.com/admin/machines
+2. Find device: `ameciclo-connector-connector`
+3. Click on it and approve the subnet routes:
+   - `10.20.0.0/16`
+   - `10.43.0.0/16`
+
+**Status**: ✅ Routes approved
+
+## Step 9: Access ArgoCD via Tailscale ✅
 
 1. ✅ Tailscale installed on your local machine
 2. ✅ Connected to Tailscale
@@ -134,11 +170,18 @@ kubectl get svc -n argocd argocd-tailscale
 # Check Tailscale proxy pod
 kubectl get pods -n tailscale
 
-# Check Tailscale proxy logs
-kubectl logs -n tailscale -l app=ts-argocd-tailscale-vb8bf
+# Check Tailscale Connector
+kubectl get connector -n tailscale
+
+# Verify kubectl access
+kubectl cluster-info
+kubectl get nodes
+
+# Use k9s
+k9s
 ```
 
-**Status**: ✅ All components verified running
+**Status**: ✅ All components verified running and accessible
 
 ## Troubleshooting
 

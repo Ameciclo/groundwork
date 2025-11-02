@@ -2,7 +2,7 @@
 
 ## ✅ Status: COMPLETE
 
-Tailscale Kubernetes Operator has been successfully installed and configured on your Azure K3s cluster.
+Tailscale Kubernetes Operator has been successfully installed and configured on your Azure K3s cluster. You now have full VPN access to your cluster and can use kubectl and k9s locally.
 
 ## What Was Installed
 
@@ -20,6 +20,14 @@ Tailscale Kubernetes Operator has been successfully installed and configured on 
 - **Proxy Pod**: `ts-argocd-tailscale-vb8bf-0` (Running)
 - **Hostname**: `argocd`
 - **Status**: ✅ Accessible via Tailscale
+
+### 3. Tailscale Connector (Subnet Router)
+- **Name**: `ameciclo-connector`
+- **Device**: `ameciclo-connector-connector` (100.64.167.43)
+- **Advertised Routes**:
+  - `10.20.0.0/16` (K3s cluster network)
+  - `10.43.0.0/16` (K3s service network)
+- **Status**: ✅ Routes approved and active
 
 ## How to Use
 
@@ -43,15 +51,34 @@ Tailscale Kubernetes Operator has been successfully installed and configured on 
    - Username: `admin`
    - Password: `5y5Xlzpdu2k215Gd`
 
+### Use kubectl to Manage the Cluster
+
+Now that Tailscale is configured with subnet routes, you can use kubectl locally:
+
+```bash
+# Check cluster info
+kubectl cluster-info
+
+# Get nodes
+kubectl get nodes
+
+# Get all resources
+kubectl get all -A
+
+# Use context
+kubectl config current-context
+# Output: ameciclo-azure-cluster
+```
+
 ### Use k9s to Manage the Cluster
 
-Now that Tailscale is configured, you can use k9s locally:
+You can also use k9s for an interactive terminal UI:
 
 ```bash
 k9s
 ```
 
-This will connect to your K3s cluster via the Tailscale VPN tunnel.
+This will connect to your K3s cluster via the Tailscale VPN tunnel and show you all cluster resources interactively.
 
 ## Architecture
 

@@ -24,7 +24,7 @@ spec:
           pg_ssl: "on"
           pg_ssl_verify: "on"
           admin_listen: "0.0.0.0:8001"
-          admin_gui_listen: "0.0.0.0:8002"
+          admin_gui_listen: "0.0.0.0:8002, 0.0.0.0:8445 ssl"
           admin_gui_url: "https://kong-manager.armadillo-hamal.ts.net"
           proxy_listen: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
           log_level: info

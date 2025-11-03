@@ -169,7 +169,7 @@
     - name: Wait for Tailscale Operator to be ready
       shell: |
         export KUBECONFIG={{ kubeconfig_path }}
-        /usr/local/bin/k3s kubectl get deployment -n {{ tailscale_namespace }} tailscale-operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"
+        /usr/local/bin/k3s kubectl get deployment -n {{ tailscale_namespace }} operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"
       register: tailscale_ready
       until: tailscale_ready.stdout == '1'
       retries: 60

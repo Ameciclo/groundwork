@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kong.fullname" . }}
+  labels:
+    {{- include "kong.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kong.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kong.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kong.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KONG_DATABASE
+              value: {{ .Values.kong.database | quote }}
+            - name: KONG_PG_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kong.fullname" . }}-db
+                  key: host
+            - name: KONG_PG_PORT
+              value: {{ .Values.kong.pg.port | quote }}
+            - name: KONG_PG_USER
+              value: {{ .Values.kong.pg.user | quote }}
+            - name: KONG_PG_DATABASE
+              value: {{ .Values.kong.pg.database | quote }}
+            - name: KONG_PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kong.fullname" . }}-db
+                  key: password
+            - name: KONG_PG_SSL
+              value: {{ .Values.kong.pg.ssl | quote }}
+            - name: KONG_PROXY_LISTEN
+              value: {{ .Values.kong.proxy.listen | quote }}
+            - name: KONG_PROXY_ACCESS_LOG
+              value: {{ .Values.kong.proxy.accessLog | quote }}
+            - name: KONG_PROXY_ERROR_LOG
+              value: {{ .Values.kong.proxy.errorLog | quote }}
+            - name: KONG_ADMIN_LISTEN
+              value: {{ .Values.kong.admin.listen | quote }}
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: {{ .Values.kong.admin.accessLog | quote }}
+            - name: KONG_ADMIN_ERROR_LOG
+              value: {{ .Values.kong.admin.errorLog | quote }}
+            - name: KONG_ADMIN_GUI_LISTEN
+              value: {{ .Values.kong.adminGui.listen | quote }}
+            - name: KONG_ADMIN_GUI_AUTH
+              value: {{ .Values.kong.adminGui.auth | quote }}
+            - name: KONG_ADMIN_GUI_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kong.fullname" . }}-session
+                  key: secret
+            - name: KONG_LOG_LEVEL
+              value: {{ .Values.kong.logLevel | quote }}
+            - name: KONG_LUA_SSL_TRUSTED_CERTIFICATE
+              value: {{ .Values.kong.luaSslTrustedCertificate | quote }}
+          ports:
+            - name: proxy
+              containerPort: 8000
+              protocol: TCP
+            - name: proxy-ssl
+              containerPort: 8443
+              protocol: TCP
+            - name: admin
+              containerPort: 8001
+              protocol: TCP
+            - name: admin-ssl
+              containerPort: 8444
+              protocol: TCP
+            - name: manager
+              containerPort: 8002
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

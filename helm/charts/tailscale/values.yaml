@@ -1,84 +1,14 @@
-# Tailscale Operator Helm Chart Values
-# This chart wraps the official Tailscale operator chart with Ameciclo configuration
-
-# Pass values to the tailscale-operator subchart
 tailscale-operator:
-  # Operator replica count
-  replicaCount: 1
-
-  # Operator image
-  image:
-    repository: tailscale/k8s-operator
-    pullPolicy: IfNotPresent
-    tag: "v1.70.0"
-
-  # Service account
-  serviceAccount:
-    create: true
-    annotations: {}
-    name: ""
-
-  # Pod security context
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    fsGroup: 65532
-
-  # Container security context
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    readOnlyRootFilesystem: true
-
-  # Resource limits
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
-
-  # Pod annotations for Tailscale
-  podAnnotations: {}
-
-  # Node selector
-  nodeSelector: {}
-
-  # Tolerations
-  tolerations: []
-
-  # Affinity
-  affinity: {}
-
-# Tailscale Operator Configuration
-tailscale:
-  # API key for Tailscale (set via secret in production)
-  # kubectl create secret generic tailscale-auth --from-literal=key=<your-key> -n tailscale
-  apiKey: ""
-
-  # Tailscale auth key (alternative to apiKey)
-  authKey: ""
-
-  # Operator mode
-  # Can be "operator" or "proxy"
-  mode: "operator"
-
-  # Enable proxy mode for subnet routing
-  proxyMode: false
-
-  # Proxy configuration (if proxyMode is enabled)
-  proxy:
-    # Routes to advertise
-    routes: []
-    # - 10.0.0.0/8
-    # - 192.168.0.0/16
-
-    # Hostname for the proxy
-    hostname: ""
-
-    # Tags for the proxy
-    tags: []
-    # - tag:k8s-proxy
+  enabled: true
+  oauth:
+    # Secrets are stored in Kubernetes secret 'tailscale-oauth-secret'
+    # Create with: kubectl create secret generic tailscale-oauth-secret \
+    #   --from-literal=clientId=YOUR_CLIENT_ID \
+    #   --from-literal=clientSecret=YOUR_CLIENT_SECRET \
+    #   -n tailscale
+    clientId: ""
+    clientSecret: ""
+    # Reference the secret instead
+    existingSecret: tailscale-oauth-secret
+    existingSecretClientIdKey: clientId
+    existingSecretClientSecretKey: clientSecret

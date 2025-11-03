@@ -8,30 +8,31 @@
 
 ---
 
-## 📋 Current Architecture (NEEDS SIMPLIFICATION)
+## 📋 Current Architecture ✅ OPTIMIZED
 
-### ⚠️ ISSUE: Duplicate Networking
+### Single VNet Architecture
 
-**Current (Redundant)**:
-1. **Resource Groups** (2)
-   - `ameciclo-rg` - Main resources
-   - `ameciclo-k3s-rg` - K3s cluster (REDUNDANT)
+**Current (Consolidated)**:
+1. **Resource Groups** (1)
+   - `ameciclo-rg` - All resources ✅
 
-2. **Networking** (DUPLICATED)
-   - 2 Virtual Networks (main + K3s) - SHOULD BE 1
-   - 3 Subnets (VM, Database, K3s) - SHOULD BE 2
-   - VNet Peering (main ↔ K3s) - NOT NEEDED
-   - 3 Network Security Groups - SHOULD BE 2
+2. **Networking** (CONSOLIDATED)
+   - 1 Virtual Network: `ameciclo-vnet` (10.10.0.0/16) ✅
+   - 2 Subnets:
+     * K3s subnet (10.10.1.0/24) ✅
+     * Database subnet (10.10.2.0/24) ✅
+   - 2 Network Security Groups (K3s, Database) ✅
+   - No VNet Peering (not needed) ✅
 
 3. **Database**
    - PostgreSQL Flexible Server (B2s tier, ~$24.70/month)
    - 2 Databases (atlas, kong)
-   - Private DNS Zone linked to BOTH VNets (SHOULD BE 1)
+   - Private DNS Zone linked to single VNet ✅
 
 4. **Compute**
-   - ~~2 VMs (main VM + K3s VM)~~ ✅ FIXED - Now only K3s VM
-   - Public IPs (only K3s)
-   - Network Interfaces (only K3s)
+   - 1 K3s VM (ameciclo-k3s-vm) ✅
+   - Public IP (Static)
+   - Network Interface
 
 5. **Storage**
    - Storage Account (enabled)
@@ -42,38 +43,32 @@
 ## 🎯 Recommendations
 
 ### 0. **Consolidate to Single VNet** ⭐ CRITICAL PRIORITY
-- [ ] **TODO** - Merge main VNet and K3s VNet into one
+- [x] **DONE** - Merged main VNet and K3s VNet into one
 
-**Current Issue**: You have TWO VNets with duplicate networking:
-- `ameciclo-vnet` (10.10.0.0/16) - Main VNet with VM subnet + database subnet
-- `ameciclo-k3s-vnet` (10.20.0.0/16) - K3s VNet with K3s subnet
-- VNet Peering connecting them (unnecessary)
-- PostgreSQL linked to BOTH VNets (redundant)
+**What Was Done**:
+- ✅ Removed separate K3s VNet (`ameciclo-k3s-vnet`)
+- ✅ Removed K3s resource group (`ameciclo-k3s-rg`)
+- ✅ Consolidated to single VNet (`ameciclo-vnet` 10.10.0.0/16)
+- ✅ Created 2 subnets:
+  - K3s subnet (10.10.1.0/24)
+  - Database subnet (10.10.2.0/24)
+- ✅ Moved K3s VM from k3s.tf to network.tf
+- ✅ Moved K3s NSG from k3s.tf to network.tf
+- ✅ Removed VNet peering (no longer needed)
+- ✅ Updated database.tf to use single VNet
+- ✅ Removed duplicate DNS zone links
+- ✅ Deleted k3s.tf file
+- ✅ Updated variables.tf (removed K3s-specific variables)
+- ✅ Updated locals.tf (removed K3s-specific variables)
+- ✅ Fixed data_sources.tf (removed invalid arguments)
 
-**Recommendation**: Consolidate to SINGLE VNet with 2 subnets:
-- `ameciclo-vnet` (10.10.0.0/16)
-  - `k3s-subnet` (10.10.1.0/24) - K3s VM
-  - `database-subnet` (10.10.2.0/24) - PostgreSQL
-
-**Benefits**:
+**Benefits Achieved**:
 - ✅ Simpler architecture
-- ✅ Remove VNet peering complexity
+- ✅ Removed VNet peering complexity
 - ✅ Single private DNS zone
 - ✅ Easier to manage
-- ✅ Slightly lower costs (no peering)
-
-**Action**:
-```bash
-# Delete:
-# - azure/k3s.tf (K3s VNet, RG, NSG, VM)
-# - Remove VNet peering from network.tf
-
-# Consolidate:
-# - Move K3s VM to network.tf
-# - Move K3s NSG to network.tf
-# - Update database.tf to use single VNet
-# - Update resource_group.tf to use single RG
-```
+- ✅ Slightly lower costs
+- ✅ Terraform plan validates successfully
 
 ---
 
@@ -326,14 +321,14 @@ variable "cost_center" {
 - [x] Create terraform.tfvars.example
 - [x] Add data sources for Azure images
 
-### Phase 3 (CRITICAL) - NETWORK CONSOLIDATION ⚠️ TODO
-- [ ] Consolidate to single VNet (10.10.0.0/16)
-- [ ] Move K3s VM from k3s.tf to network.tf
-- [ ] Remove k3s.tf file
-- [ ] Remove VNet peering
-- [ ] Update database.tf to use single VNet
-- [ ] Remove duplicate resource group
-- [ ] Test with `terraform plan`
+### Phase 3 (CRITICAL) - NETWORK CONSOLIDATION ✅ COMPLETE
+- [x] Consolidate to single VNet (10.10.0.0/16)
+- [x] Move K3s VM from k3s.tf to network.tf
+- [x] Remove k3s.tf file
+- [x] Remove VNet peering
+- [x] Update database.tf to use single VNet
+- [x] Remove duplicate resource group
+- [x] Test with `terraform plan` ✅ VALID
 
 ### Phase 4 (Nice to Have) - SECURITY & MONITORING
 - [ ] Restrict SSH to specific IPs
@@ -345,62 +340,63 @@ variable "cost_center" {
 
 ## 📊 File Organization
 
-**Current Structure** (Needs Consolidation):
+**Final Structure** ✅ (After Consolidation):
 ```
 azure/
-├── main.tf              # Provider config
-├── locals.tf            # DRY code ✅
-├── data_sources.tf      # Data sources ✅
-├── variables.tf         # All variables
-├── outputs.tf           # All outputs ✅
-├── terraform.tfvars.example  # Example values ✅
-├── resource_group.tf    # Resource groups (NEEDS UPDATE)
-├── network.tf           # VNets, subnets, NSGs (NEEDS UPDATE)
-├── k3s.tf               # K3s VM (SHOULD MERGE TO network.tf)
-├── database.tf          # PostgreSQL (NEEDS UPDATE)
-└── storage.tf           # Storage Account ✅
+├── main.tf                              # Provider config
+├── locals.tf                            # DRY code ✅
+├── data_sources.tf                      # Data sources ✅
+├── variables.tf                         # All variables ✅
+├── outputs.tf                           # All outputs ✅
+├── terraform.tfvars.example             # Example values ✅
+├── resource_group.tf                    # Single resource group ✅
+├── network.tf                           # Single VNet + 2 subnets + K3s VM + 2 NSGs ✅
+├── database.tf                          # PostgreSQL (single VNet) ✅
+├── storage.tf                           # Storage Account ✅
+├── TERRAFORM_REVIEW_AND_RECOMMENDATIONS.md  # This document
+├── IMPLEMENTATION_SUMMARY.md            # Implementation summary
+├── CREDENTIALS_QUICK_START.md           # Credentials guide
+├── GET_CREDENTIALS.md                   # Detailed credentials guide
+└── setup-credentials.sh                 # Automated setup script
 ```
 
-**Recommended After Consolidation**:
-```
-azure/
-├── main.tf              # Provider config
-├── locals.tf            # Common values
-├── data_sources.tf      # Data sources
-├── variables.tf         # All variables
-├── outputs.tf           # All outputs
-├── terraform.tfvars.example  # Example values
-├── resource_group.tf    # Single resource group
-├── network.tf           # Single VNet + all subnets + K3s VM + NSGs
-├── database.tf          # PostgreSQL (single VNet)
-└── storage.tf           # Storage Account
-```
+**Architecture Summary**:
+- ✅ Single Resource Group: `ameciclo-rg`
+- ✅ Single VNet: `ameciclo-vnet` (10.10.0.0/16)
+  - K3s Subnet: `k3s-subnet` (10.10.1.0/24)
+  - Database Subnet: `database-subnet` (10.10.2.0/24)
+- ✅ Single K3s VM: `ameciclo-k3s-vm` (B2as_v2)
+- ✅ PostgreSQL: `ameciclo-postgres` (B2s tier)
+- ✅ Storage Account: `ameciclostorage` (LRS)
+- ✅ 2 NSGs: K3s NSG + Database NSG
+- ✅ No VNet Peering (single VNet)
 
 ---
 
 ## ✅ Summary
 
 **What's Good** ✅:
-- ✅ Clean separation of concerns
-- ✅ Good use of variables
-- ✅ Proper tagging strategy
-- ✅ Private database access
+- ✅ Single consolidated VNet (10.10.0.0/16)
+- ✅ Single resource group (ameciclo-rg)
 - ✅ Single K3s VM (cost optimized)
+- ✅ 2 subnets (K3s + Database)
+- ✅ 2 NSGs (K3s + Database)
+- ✅ No VNet peering (simplified)
 - ✅ Storage Account enabled
 - ✅ DRY code with locals.tf
 - ✅ Comprehensive terraform.tfvars.example
+- ✅ Clean separation of concerns
+- ✅ Proper tagging strategy
+- ✅ Private database access
 
-**What to Improve** ⚠️:
-- ⚠️ **CRITICAL**: Duplicate VNets (main + K3s) - CONSOLIDATE
-- ⚠️ Unnecessary VNet peering
-- ⚠️ Duplicate resource groups
-- ⚠️ PostgreSQL linked to both VNets
-- ⚠️ Restrict SSH access (security)
-- ⚠️ Add monitoring (optional)
-
-**Next Steps**:
+**Completed Phases** ✅:
 1. ✅ Phase 1: Remove main VM (DONE)
 2. ✅ Phase 2: Enable Storage & DRY code (DONE)
-3. ⚠️ Phase 3: Consolidate VNets (TODO - CRITICAL)
-4. Phase 4: Add monitoring (optional)
+3. ✅ Phase 3: Consolidate VNets (DONE)
+
+**Optional Enhancements** (Phase 4):
+- [ ] Restrict SSH access to specific IPs (security)
+- [ ] Add monitoring (optional, +$10-15/month)
+- [ ] Increase backup retention (optional, +$2-3/month)
+- [ ] Enable geo-redundant backups (optional, +$3-7/month)
 

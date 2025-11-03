@@ -6,18 +6,12 @@ metadata:
   annotations:
     tailscale.com/expose: "true"
 spec:
+  defaultBackend:
+    service:
+      name: argocd-server
+      port:
+        number: 80
   ingressClassName: tailscale
   tls:
     - hosts:
         - argocd
-  rules:
-    - host: argocd
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: argocd-server
-                port:
-                  number: 80

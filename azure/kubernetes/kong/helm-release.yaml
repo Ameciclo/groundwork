@@ -1,0 +1,89 @@
+apiVersion: helm.sh/v1
+kind: HelmChart
+metadata:
+  name: kong
+  namespace: kong
+spec:
+  chart: kong
+  repo: https://charts.konghq.com
+  version: 2.52.0
+  values: |
+    image:
+      repository: kong
+      pullPolicy: IfNotPresent
+      tag: "3.9"
+
+    replicaCount: 1
+
+    # Kong configuration
+    env:
+      database: postgres
+      pg_host: ameciclo-postgres.privatelink.postgres.database.azure.com
+      pg_port: 5432
+      pg_user: psqladmin
+      pg_database: kong
+      # SSL configuration for PostgreSQL
+      pg_ssl: "on"
+      pg_ssl_verify: "on"
+      # Kong admin settings
+      admin_listen: "0.0.0.0:8001"
+      admin_gui_listen: "0.0.0.0:8002"
+      admin_gui_url: "https://kong-manager.armadillo-hamal.ts.net"
+      proxy_listen: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+      log_level: info
+
+    # Custom environment variables with secret reference
+    customEnv:
+      KONG_PG_PASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: kong-postgres-secret
+            key: password
+
+    # Disable ingress controller
+    ingressController:
+      enabled: false
+
+    # Service configuration - Kong proxy as LoadBalancer with Tailscale
+    proxy:
+      type: LoadBalancer
+      loadBalancerClass: tailscale
+      annotations:
+        tailscale.com/tags: "tag:k8s"
+      ports:
+        http:
+          containerPort: 8000
+          servicePort: 80
+        https:
+          containerPort: 8443
+          servicePort: 443
+
+    # Admin API - ClusterIP (accessed via Ingress)
+    admin:
+      type: ClusterIP
+      ports:
+        http:
+          containerPort: 8001
+          servicePort: 8001
+
+    # Manager GUI - ClusterIP (accessed via Ingress)
+    manager:
+      type: ClusterIP
+      ports:
+        http:
+          containerPort: 8002
+          servicePort: 8002
+
+    # Resource limits
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+    # Migrations
+    migrations:
+      preUpgrade: true
+      postUpgrade: true

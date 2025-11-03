@@ -1,0 +1,284 @@
+---
+# K3s Bootstrap Playbook
+# Installs K3s, Tailscale Operator, and ArgoCD on a single node
+#
+# Usage:
+#   ansible-playbook -i ansible/k3s-azure-inventory.yml ansible/k3s-bootstrap-playbook.yml
+#
+# Prerequisites:
+#   - Ubuntu 22.04 LTS VM
+#   - SSH access configured
+#   - Tailscale OAuth credentials (set as environment variables)
+#
+# Environment variables required:
+#   - TAILSCALE_OAUTH_CLIENT_ID
+#   - TAILSCALE_OAUTH_CLIENT_SECRET
+
+- name: K3s Bootstrap - Install K3s, Tailscale Operator, and ArgoCD
+  hosts: all
+  become: true
+  gather_facts: yes
+
+  vars:
+    k3s_version: "v1.32.4+k3s1"
+    helm_version: "v3.14.0"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+    user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
+    tailscale_operator_version: "1.90.6"
+    argocd_version: "7.3.3"
+    argocd_namespace: "argocd"
+    tailscale_namespace: "tailscale"
+
+  pre_tasks:
+    - name: Validate required environment variables
+      assert:
+        that:
+          - lookup('env', 'TAILSCALE_OAUTH_CLIENT_ID') != ''
+          - lookup('env', 'TAILSCALE_OAUTH_CLIENT_SECRET') != ''
+        fail_msg: "TAILSCALE_OAUTH_CLIENT_ID and TAILSCALE_OAUTH_CLIENT_SECRET environment variables are required"
+
+    - name: Set Tailscale credentials from environment
+      set_fact:
+        tailscale_client_id: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_ID') }}"
+        tailscale_client_secret: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_SECRET') }}"
+
+  tasks:
+    # ========== System Preparation ==========
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - jq
+          - unzip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    # ========== K3s Installation ==========
+    - name: Install K3s with disabled components
+      shell: |
+        curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        INSTALL_K3S_EXEC="--disable=traefik --disable=servicelb" \
+        sh -
+      args:
+        creates: /usr/local/bin/k3s
+      register: k3s_install
+      changed_when: "'installed' in k3s_install.stdout or 'updated' in k3s_install.stdout"
+
+    - name: Wait for K3s to be ready
+      shell: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_ready
+      until: k3s_ready.rc == 0
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Enable K3s service
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ========== Kubeconfig Setup ==========
+    - name: Create .kube directory for user
+      file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Copy kubeconfig to user home
+      shell: |
+        cp {{ kubeconfig_path }} {{ user_kubeconfig_path }}
+        chown {{ ansible_user }}:{{ ansible_user }} {{ user_kubeconfig_path }}
+        chmod 600 {{ user_kubeconfig_path }}
+      changed_when: false
+
+    # ========== Helm Setup ==========
+    - name: Add Helm repositories
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl version --client
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+      register: helm_install
+      changed_when: "'installed' in helm_install.stdout or 'updated' in helm_install.stdout"
+
+    - name: Wait for Helm to be available
+      shell: /usr/local/bin/helm version
+      register: helm_ready
+      until: helm_ready.rc == 0
+      retries: 10
+      delay: 5
+      changed_when: false
+
+    - name: Add Helm chart repositories
+      shell: |
+        /usr/local/bin/helm repo add tailscale https://pkgs.tailscale.com/helmcharts
+        /usr/local/bin/helm repo add argo https://argoproj.github.io/argo-helm
+        /usr/local/bin/helm repo update
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: false
+
+    # ========== Tailscale Operator Installation ==========
+    - name: Create Tailscale namespace
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl create namespace {{ tailscale_namespace }} --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+      changed_when: false
+
+    - name: Install Tailscale Operator via Helm
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/helm install tailscale tailscale/tailscale-operator \
+          -n {{ tailscale_namespace }} \
+          --version {{ tailscale_operator_version }} \
+          --set oauth.clientID="{{ tailscale_client_id }}" \
+          --set oauth.clientSecret="{{ tailscale_client_secret }}" \
+          --wait
+      register: tailscale_install
+      changed_when: "'deployed' in tailscale_install.stdout or 'installed' in tailscale_install.stdout"
+      failed_when: tailscale_install.rc != 0 and 'cannot re-use a name' not in tailscale_install.stderr
+
+    - name: Wait for Tailscale Operator to be ready
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl get deployment -n {{ tailscale_namespace }} tailscale-operator -o jsonpath='{.status.readyReplicas}'
+      register: tailscale_ready
+      until: tailscale_ready.stdout == '1'
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    # ========== ArgoCD Installation ==========
+    - name: Create ArgoCD namespace
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl create namespace {{ argocd_namespace }} --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+      changed_when: false
+
+    - name: Install ArgoCD via Helm
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/helm install argocd argo/argo-cd \
+          -n {{ argocd_namespace }} \
+          --version {{ argocd_version }} \
+          --wait
+      register: argocd_install
+      changed_when: "'deployed' in argocd_install.stdout or 'installed' in argocd_install.stdout"
+      failed_when: argocd_install.rc != 0 and 'cannot re-use a name' not in argocd_install.stderr
+
+    - name: Wait for ArgoCD to be ready
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl get deployment -n {{ argocd_namespace }} argocd-server -o jsonpath='{.status.readyReplicas}'
+      register: argocd_ready
+      until: argocd_ready.stdout == '1'
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    # ========== ArgoCD Ingress Setup ==========
+    - name: Create ArgoCD Tailscale Ingress
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        cat <<'EOF' | /usr/local/bin/k3s kubectl apply -f -
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: argocd
+          namespace: {{ argocd_namespace }}
+        spec:
+          ingressClassName: tailscale
+          defaultBackend:
+            service:
+              name: argocd-server
+              port:
+                number: 443
+          tls:
+            - hosts:
+                - argocd
+        EOF
+      changed_when: false
+
+    # ========== Verification and Output ==========
+    - name: Get K3s version
+      shell: /usr/local/bin/k3s --version
+      register: k3s_version_output
+      changed_when: false
+
+    - name: Get ArgoCD initial admin password
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      register: argocd_password
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: argocd_password.rc == 0
+
+    - name: Get cluster nodes
+      shell: /usr/local/bin/k3s kubectl get nodes -o wide
+      register: k3s_nodes
+      changed_when: false
+
+    - name: Get Tailscale Operator status
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl get pods -n {{ tailscale_namespace }}
+      register: tailscale_status
+      changed_when: false
+
+    - name: Get ArgoCD status
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl get pods -n {{ argocd_namespace }}
+      register: argocd_status
+      changed_when: false
+
+    - name: Display bootstrap summary
+      debug:
+        msg: |
+          ========================================
+          K3s Bootstrap Complete!
+          ========================================
+          
+          K3s Version:
+          {{ k3s_version_output.stdout }}
+          
+          Nodes:
+          {{ k3s_nodes.stdout }}
+          
+          Tailscale Operator:
+          {{ tailscale_status.stdout }}
+          
+          ArgoCD:
+          {{ argocd_status.stdout }}
+          
+          ArgoCD Access:
+          - URL: https://argocd.armadillo-hamal.ts.net
+          - Username: admin
+          - Password: {{ argocd_password.stdout }}
+          
+          Kubeconfig: {{ user_kubeconfig_path }}
+          
+          Next steps:
+          1. Access ArgoCD at https://argocd.armadillo-hamal.ts.net
+          2. Configure Git repository in ArgoCD
+          3. Create Applications for your services
+          ========================================
+

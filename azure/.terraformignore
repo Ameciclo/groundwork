@@ -1,0 +1,45 @@
+# Terraform Ignore File
+# Files and directories to exclude from Terraform operations
+
+# Documentation
+*.md
+README.md
+TERRAFORM_REVIEW_AND_RECOMMENDATIONS.md
+NETWORK_CONSOLIDATION_COMPLETE.md
+IMPLEMENTATION_SUMMARY.md
+CREDENTIALS_QUICK_START.md
+GET_CREDENTIALS.md
+REFACTORING_SUMMARY.md
+FILE_ORGANIZATION_GUIDE.md
+
+# Scripts
+*.sh
+setup-credentials.sh
+
+# Kubernetes
+kubernetes/
+*.yaml
+*.yml
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.backup
+

@@ -16,28 +16,29 @@ Successfully tested the complete GitOps workflow using ArgoCD and the groundwork
 
 ### 1. Created Demo Application
 
-**Helm Chart:** `helm/charts/nginx-demo/`
-- Deployment with configurable replicas
-- Service (ClusterIP)
-- Ingress (Tailscale class)
-- Helpers and templates
+**Kubernetes Manifests:** `kubernetes/nginx-demo/`
+- `namespace.yaml` - nginx-demo namespace
+- `deployment.yaml` - 3 nginx replicas (later scaled to 5)
+- `service.yaml` - NodePort service on port 30080
+- `argocd-application.yaml` - ArgoCD Application resource
 
-**ArgoCD Application:** `helm/applications/nginx-demo.yaml`
+**ArgoCD Application:** `kubernetes/nginx-demo/argocd-application.yaml`
 - Points to: `https://github.com/Ameciclo/groundwork.git`
-- Path: `helm/charts/nginx-demo`
-- Namespace: `default`
+- Path: `kubernetes/nginx-demo`
+- Namespace: `nginx-demo`
 - Sync Policy: Automated with self-healing enabled
+- Access: `http://20.171.92.187:30080` (public IP)
 
 ### 2. Initial Deployment
 
 ```bash
-kubectl apply -f helm/applications/nginx-demo.yaml
+kubectl apply -f kubernetes/nginx-demo/argocd-application.yaml
 ```
 
 **Result:** ✅ Application deployed successfully
-- 2 nginx pods running
-- Service created at `10.43.79.19:80`
-- Ingress created for `nginx-demo.armadillo-hamal.ts.net`
+- 3 nginx pods running
+- Service created at `10.43.208.76:80` (NodePort 30080)
+- Accessible via public IP: `20.171.92.187:30080`
 
 ## Test Results
 
@@ -65,8 +66,8 @@ nginx-demo   Synced        Progressing
 **Objective:** Test the complete GitOps workflow: commit change to Git → ArgoCD detects → automatic deployment
 
 **Steps:**
-1. Modified `helm/applications/nginx-demo.yaml`:
-   - Changed `replicaCount: 2` → `replicaCount: 3`
+1. Modified `kubernetes/nginx-demo/deployment.yaml`:
+   - Changed `replicas: 3` → `replicas: 5`
 2. Committed and pushed to main branch
 3. Triggered ArgoCD refresh
 4. Verified deployment updated
@@ -74,20 +75,22 @@ nginx-demo   Synced        Progressing
 **Before:**
 ```
 NAME         READY   UP-TO-DATE   AVAILABLE
-nginx-demo   2/2     2            2
+nginx-demo   3/3     3            3
 ```
 
 **After:**
 ```
 NAME         READY   UP-TO-DATE   AVAILABLE
-nginx-demo   3/3     3            3
+nginx-demo   5/5     5            5
 ```
 
 **Pods:**
 ```
-nginx-demo-69c75d6758-4nz42   1/1   Running
-nginx-demo-69c75d6758-btpmr   1/1   Running
-nginx-demo-69c75d6758-rpdzz   1/1   Running   (NEW)
+nginx-demo-5df57dd5b7-9lk8r   1/1   Running   (original)
+nginx-demo-5df57dd5b7-l6zq9   1/1   Running   (original)
+nginx-demo-5df57dd5b7-q582n   1/1   Running   (original)
+nginx-demo-5df57dd5b7-mfglg   1/1   Running   (NEW)
+nginx-demo-5df57dd5b7-zc5tv   1/1   Running   (NEW)
 ```
 
 ✅ **PASSED** - GitOps workflow works end-to-end
@@ -99,14 +102,14 @@ nginx-demo-69c75d6758-rpdzz   1/1   Running   (NEW)
 **Objective:** Verify that ArgoCD's self-healing automatically recreates deleted resources
 
 **Steps:**
-1. Manually deleted a pod: `nginx-demo-69c75d6758-sxk54`
+1. Manually deleted a pod: `nginx-demo-5df57dd5b7-mfglg`
 2. Waited for ArgoCD to detect drift
 3. Verified pod was automatically recreated
 
 **Result:**
-- Pod deleted at 12:34:56
-- New pod `nginx-demo-69c75d6758-rpdzz` created at 12:35:08 (12 seconds later)
-- All 3 replicas maintained
+- Pod deleted
+- New pod `nginx-demo-5df57dd5b7-h2mdm` created (16 seconds later)
+- All 5 replicas maintained
 
 ✅ **PASSED** - Self-healing works correctly
 
@@ -114,11 +117,12 @@ nginx-demo-69c75d6758-rpdzz   1/1   Running   (NEW)
 
 ### Test 4: Application Accessibility ✅
 
-**Objective:** Verify the deployed application is accessible
+**Objective:** Verify the deployed application is accessible via public IP
 
 **Steps:**
 1. Executed curl inside nginx pod
 2. Verified nginx welcome page
+3. Confirmed access via public IP: `20.171.92.187:30080`
 
 **Result:**
 ```html
@@ -130,27 +134,30 @@ nginx-demo-69c75d6758-rpdzz   1/1   Running   (NEW)
 <h1>Welcome to nginx!</h1>
 ```
 
-✅ **PASSED** - Application is running and accessible
+✅ **PASSED** - Application is running and accessible via public IP
 
 ---
 
 ## Architecture Verification
 
-### Tailscale Integration ✅
+### Public IP Access ✅
 
-The nginx-demo application is exposed via Tailscale Ingress:
-- **Hostname:** `nginx-demo.armadillo-hamal.ts.net`
-- **Ingress Class:** `tailscale`
-- **Status:** Ready for access via Tailscale VPN
+The nginx-demo application is exposed via NodePort on public IP:
+- **Public IP:** `20.171.92.187`
+- **Port:** `30080`
+- **Service Type:** NodePort
+- **Status:** Accessible from anywhere
 
 ### ArgoCD Integration ✅
 
 ArgoCD successfully manages the application:
 - **Sync Status:** Synced
-- **Health Status:** Progressing → Healthy
+- **Health Status:** Healthy
 - **Automated Sync:** Enabled
 - **Self-Healing:** Enabled
 - **Prune:** Enabled
+- **Repository:** https://github.com/Ameciclo/groundwork.git
+- **Path:** kubernetes/nginx-demo
 
 ## Key Findings
 
@@ -171,8 +178,8 @@ ArgoCD successfully manages the application:
 
 ## Commits
 
-1. **d9f4518** - Add nginx-demo Helm chart and ArgoCD Application
-2. **fadb8b5** - Update nginx-demo replica count to 3 for GitOps testing
+1. **79ced67** - Refactor: Replace Helm chart with simple Kubernetes manifests
+2. **d96082d** - Test: Scale nginx-demo to 5 replicas via GitOps
 
 ## Conclusion
 

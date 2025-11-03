@@ -20,16 +20,26 @@
   gather_facts: yes
 
   vars:
+    # K3s Configuration
     k3s_version: "v1.32.4+k3s1"
-    helm_version: "v3.14.0"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
     user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
-    tailscale_operator_version: "1.90.6"
-    argocd_version: "7.3.3"
-    argocd_namespace: "argocd"
-    tailscale_namespace: "tailscale"
     pod_cidr: "10.10.0.0/16"
     service_cidr: "10.43.0.0/16"
+
+    # Component Versions
+    helm_version: "v3.14.0"
+    tailscale_operator_version: "1.90.6"
+    argocd_version: "7.3.3"
+
+    # Namespaces
+    argocd_namespace: "argocd"
+    tailscale_namespace: "tailscale"
+
+    # Optional Components (set to false to skip installation)
+    install_tailscale_operator: true
+    install_argocd: true
+    install_tailscale_subnet_router: true
 
   pre_tasks:
     - name: Validate required environment variables
@@ -96,6 +106,11 @@
         state: directory
         mode: "0755"
 
+    - name: Check if K3s config already has private IP
+      stat:
+        path: /etc/rancher/k3s/config.yaml
+      register: k3s_config_stat
+
     - name: Add private IP to K3s config for TLS SAN
       copy:
         content: |
@@ -104,8 +119,9 @@
         dest: /etc/rancher/k3s/config.yaml
         mode: "0644"
       register: k3s_config_updated
+      when: not k3s_config_stat.stat.exists
 
-    - name: Restart K3s if config was updated
+    - name: Restart K3s if config was created
       systemd:
         name: k3s
         state: restarted
@@ -164,15 +180,15 @@
 
     - name: Add Helm chart repositories
       shell: |
-        /usr/local/bin/helm repo add tailscale https://pkgs.tailscale.com/helmcharts
-        /usr/local/bin/helm repo add argo https://argoproj.github.io/argo-helm
+        /usr/local/bin/helm repo add tailscale https://pkgs.tailscale.com/helmcharts 2>&1 | grep -v "already exists" || true
+        /usr/local/bin/helm repo add argo https://argoproj.github.io/argo-helm 2>&1 | grep -v "already exists" || true
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: helm_repo_add
       retries: 3
       delay: 5
       until: helm_repo_add.rc == 0
-      changed_when: false
+      changed_when: "'added' in helm_repo_add.stdout"
 
     - name: Update Helm repositories
       shell: /usr/local/bin/helm repo update
@@ -200,6 +216,7 @@
       delay: 30
       until: tailscale_install.rc == 0
       changed_when: "'deployed' in tailscale_install.stdout or 'installed' in tailscale_install.stdout or 'upgraded' in tailscale_install.stdout"
+      when: install_tailscale_operator
 
     - name: Wait for Tailscale Operator to be ready
       shell: |
@@ -210,6 +227,7 @@
       retries: 60
       delay: 10
       changed_when: false
+      when: install_tailscale_operator
 
     # ========== Tailscale Subnet Router Setup ==========
     - name: Create Tailscale Connector for subnet routing
@@ -229,6 +247,7 @@
           hostname: k3s-subnet-router
         EOF
       changed_when: false
+      when: install_tailscale_operator and install_tailscale_subnet_router
 
     # ========== ArgoCD Installation ==========
     - name: Create ArgoCD namespace
@@ -236,6 +255,7 @@
         export KUBECONFIG={{ kubeconfig_path }}
         /usr/local/bin/k3s kubectl create namespace {{ argocd_namespace }} --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
       changed_when: false
+      when: install_argocd
 
     - name: Install ArgoCD via Helm (without wait)
       shell: |
@@ -251,6 +271,7 @@
       delay: 30
       until: argocd_install.rc == 0
       changed_when: "'deployed' in argocd_install.stdout or 'installed' in argocd_install.stdout or 'upgraded' in argocd_install.stdout"
+      when: install_argocd
 
     - name: Wait for ArgoCD to be ready (with longer timeout)
       shell: |
@@ -261,6 +282,7 @@
       retries: 60
       delay: 20
       changed_when: false
+      when: install_argocd
 
     # ========== ArgoCD Ingress Setup ==========
     - name: Create ArgoCD Tailscale Ingress
@@ -284,6 +306,7 @@
                 - argocd
         EOF
       changed_when: false
+      when: install_argocd and install_tailscale_operator
 
     # ========== Verification and Output ==========
     - name: Get K3s version
@@ -312,6 +335,7 @@
         /usr/local/bin/k3s kubectl get pods -n {{ tailscale_namespace }}
       register: tailscale_status
       changed_when: false
+      when: install_tailscale_operator
 
     - name: Get ArgoCD status
       shell: |
@@ -319,6 +343,7 @@
         /usr/local/bin/k3s kubectl get pods -n {{ argocd_namespace }}
       register: argocd_status
       changed_when: false
+      when: install_argocd
 
     - name: Display bootstrap summary
       debug:
@@ -346,8 +371,14 @@
 
           Kubeconfig: {{ user_kubeconfig_path }}
 
+          Important Notes:
+          - K3s API is accessible via private IP (10.10.1.4:6443) through Tailscale
+          - Tailscale subnet routes (10.10.0.0/16, 10.43.0.0/16) are advertised
+          - Accept routes on your local machine: sudo tailscale up --accept-routes
+
           Next steps:
-          1. Access ArgoCD at https://argocd.armadillo-hamal.ts.net
-          2. Configure Git repository in ArgoCD
-          3. Create Applications for your services
+          1. Accept Tailscale subnet routes on your local machine
+          2. Access ArgoCD at https://argocd.armadillo-hamal.ts.net
+          3. Configure Git repository in ArgoCD
+          4. Create Applications for your services
           ========================================

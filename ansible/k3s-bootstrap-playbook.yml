@@ -28,6 +28,8 @@
     argocd_version: "7.3.3"
     argocd_namespace: "argocd"
     tailscale_namespace: "tailscale"
+    pod_cidr: "10.10.0.0/16"
+    service_cidr: "10.43.0.0/16"
 
   pre_tasks:
     - name: Validate required environment variables
@@ -90,6 +92,29 @@
         enabled: yes
         daemon_reload: yes
 
+    # ========== Tailscale Client Installation ==========
+    - name: Install Tailscale client
+      shell: curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        creates: /usr/bin/tailscale
+      register: tailscale_client_install
+      retries: 3
+      delay: 10
+      until: tailscale_client_install.rc == 0
+
+    - name: Connect Tailscale client with OAuth
+      shell: |
+        /usr/bin/tailscale up \
+          --oauth \
+          --advertise-routes={{ pod_cidr }},{{ service_cidr }} \
+          --accept-dns=false \
+          --accept-routes
+      register: tailscale_connect
+      retries: 3
+      delay: 10
+      until: tailscale_connect.rc == 0
+      changed_when: false
+
     # ========== Kubeconfig Setup ==========
     - name: Create .kube directory for user
       file:
@@ -129,7 +154,6 @@
       shell: |
         /usr/local/bin/helm repo add tailscale https://pkgs.tailscale.com/helmcharts
         /usr/local/bin/helm repo add argo https://argoproj.github.io/argo-helm
-        /usr/local/bin/helm repo update
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: helm_repo_add
@@ -138,36 +162,62 @@
       until: helm_repo_add.rc == 0
       changed_when: false
 
-    # ========== Tailscale Operator Installation ==========
-    - name: Create Tailscale namespace
-      shell: |
-        export KUBECONFIG={{ kubeconfig_path }}
-        /usr/local/bin/k3s kubectl create namespace {{ tailscale_namespace }} --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+    - name: Update Helm repositories
+      shell: /usr/local/bin/helm repo update
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: helm_repo_update
+      retries: 3
+      delay: 5
+      until: helm_repo_update.rc == 0
       changed_when: false
 
-    - name: Install Tailscale Operator via Helm (without wait)
+    # ========== Tailscale Operator Installation ==========
+    - name: Install Tailscale Operator via Helm (using --install)
       shell: |
         export KUBECONFIG={{ kubeconfig_path }}
-        /usr/local/bin/helm install tailscale tailscale/tailscale-operator \
-          -n {{ tailscale_namespace }} \
-          --version {{ tailscale_operator_version }} \
-          --set oauth.clientID="{{ tailscale_client_id }}" \
-          --set oauth.clientSecret="{{ tailscale_client_secret }}"
+        /usr/local/bin/helm upgrade \
+          --install \
+          tailscale-operator \
+          tailscale/tailscale-operator \
+          --namespace={{ tailscale_namespace }} \
+          --create-namespace \
+          --set-string oauth.clientId="{{ tailscale_client_id }}" \
+          --set-string oauth.clientSecret="{{ tailscale_client_secret }}"
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
       register: tailscale_install
       retries: 2
       delay: 30
-      until: tailscale_install.rc == 0 or 'cannot re-use a name' in tailscale_install.stderr
-      changed_when: "'deployed' in tailscale_install.stdout or 'installed' in tailscale_install.stdout"
-      failed_when: tailscale_install.rc != 0 and 'cannot re-use a name' not in tailscale_install.stderr
+      until: tailscale_install.rc == 0
+      changed_when: "'deployed' in tailscale_install.stdout or 'installed' in tailscale_install.stdout or 'upgraded' in tailscale_install.stdout"
 
-    - name: Wait for Tailscale Operator to be ready (with longer timeout)
+    - name: Wait for Tailscale Operator to be ready
       shell: |
         export KUBECONFIG={{ kubeconfig_path }}
         /usr/local/bin/k3s kubectl get deployment -n {{ tailscale_namespace }} tailscale-operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"
       register: tailscale_ready
       until: tailscale_ready.stdout == '1'
       retries: 60
-      delay: 20
+      delay: 10
+      changed_when: false
+
+    # ========== Tailscale Subnet Router Setup ==========
+    - name: Create Tailscale Connector for subnet routing
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        cat <<'EOF' | /usr/local/bin/k3s kubectl apply -f -
+        apiVersion: tailscale.com/v1alpha1
+        kind: Connector
+        metadata:
+          name: k3s-subnet-router
+          namespace: {{ tailscale_namespace }}
+        spec:
+          subnetRoutes:
+            - {{ pod_cidr }}
+            - {{ service_cidr }}
+          hostname: k3s-subnet-router
+        EOF
       changed_when: false
 
     # ========== ArgoCD Installation ==========

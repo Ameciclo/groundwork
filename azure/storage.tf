@@ -14,6 +14,8 @@ resource "azurerm_storage_account" "ameciclo" {
 }
 
 # Storage Container (for backups and exports)
+# Note: storage_account_name is deprecated in favor of storage_account_id in azurerm v5.0+
+# Currently using storage_account_name for compatibility with azurerm v4.51.0
 resource "azurerm_storage_container" "ameciclo" {
   name                  = "ameciclo-data"
   storage_account_name  = azurerm_storage_account.ameciclo.name

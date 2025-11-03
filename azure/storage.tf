@@ -20,13 +20,18 @@ resource "azurerm_storage_container" "ameciclo" {
   name                  = "ameciclo-data"
   storage_account_name  = azurerm_storage_account.ameciclo.name
   container_access_type = "private"
+
+  depends_on = [azurerm_storage_account.ameciclo]
 }
 
 # Storage Account Network Rules (restrict to K3s subnet)
+# IMPORTANT: Create container BEFORE applying network rules to avoid access denied errors
 resource "azurerm_storage_account_network_rules" "ameciclo" {
   storage_account_id         = azurerm_storage_account.ameciclo.id
   default_action             = "Deny"
-  bypass                     = ["AzureServices"]
+  bypass                     = ["AzureServices", "Logging", "Metrics"]
   virtual_network_subnet_ids = [azurerm_subnet.k3s.id]
+
+  depends_on = [azurerm_storage_container.ameciclo]
 }
 

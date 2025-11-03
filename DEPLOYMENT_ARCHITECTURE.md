@@ -172,11 +172,11 @@ To deploy to a new cloud provider:
   - [x] Login to ArgoCD with default credentials
 
 ### Phase 4: GitOps Management
-- [ ] **ArgoCD:** Deploy applications from Git
-  - [ ] Create Git repository with application manifests
-  - [ ] Create ArgoCD Application resources pointing to Git repo
-  - [ ] Verify applications are deployed automatically
-  - [ ] Test GitOps workflow: commit → ArgoCD → deployed
+- [x] **ArgoCD:** Deploy applications from Git
+  - [x] Create Git repository with application manifests
+  - [x] Create ArgoCD Application resources pointing to Git repo
+  - [x] Verify applications are deployed automatically
+  - [x] Test GitOps workflow: commit → ArgoCD → deployed
 
 ### Phase 5: Cleanup
 - [x] **Remove Kong from K3s cluster**
@@ -204,13 +204,18 @@ To deploy to a new cloud provider:
 - ✅ Removed Kong from K3s cluster (deleted ArgoCD Application and namespace)
 - ✅ Verified all Kong resources are removed
 - ✅ Removed TAILSCALE_K3S_ACCESS.md and K3S_QUICK_ACCESS.md documentation
+- ✅ Created nginx-demo Helm chart for GitOps testing
+- ✅ Deployed nginx-demo via ArgoCD Application
+- ✅ Tested GitOps workflow: commit → ArgoCD → deployed
+- ✅ Verified self-healing: deleted pods automatically recreated
+- ✅ Verified application accessibility via Tailscale Ingress
 
 **In Progress:**
 - 🔄 None
 
 **Pending:**
-- ⏳ Deploy applications via ArgoCD (GitOps workflow)
 - ⏳ Set up production hardening (RBAC, monitoring, logging, backups)
+- ⏳ Deploy additional applications via GitOps
 
 ## Kubeconfig Update
 

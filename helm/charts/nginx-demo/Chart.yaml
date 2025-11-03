@@ -1,7 +1,0 @@
-apiVersion: v2
-name: nginx-demo
-description: A simple demo nginx application for testing GitOps workflow
-type: application
-version: 1.0.0
-appVersion: "1.0.0"
-

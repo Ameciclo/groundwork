@@ -1,5 +1,8 @@
 # Storage Account (for Blob Storage - equivalent to DigitalOcean Spaces)
 # Used for backups, exports, and file uploads
+# TEMPORARILY DISABLED: Network rules causing access issues
+# TODO: Re-enable after core infrastructure is stable
+/*
 resource "azurerm_storage_account" "ameciclo" {
   name                     = var.storage_account_name
   resource_group_name      = azurerm_resource_group.ameciclo.name
@@ -34,4 +37,5 @@ resource "azurerm_storage_account_network_rules" "ameciclo" {
 
   depends_on = [azurerm_storage_container.ameciclo]
 }
+*/
 

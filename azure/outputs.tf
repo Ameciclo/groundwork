@@ -42,6 +42,9 @@ output "postgresql_connection_string" {
 }
 
 # Storage Account Outputs
+# TEMPORARILY DISABLED: Storage resources disabled
+# TODO: Re-enable after core infrastructure is stable
+/*
 output "storage_account_name" {
   description = "Storage account name"
   value       = azurerm_storage_account.ameciclo.name
@@ -56,6 +59,7 @@ output "storage_container_name" {
   description = "Storage container name"
   value       = azurerm_storage_container.ameciclo.name
 }
+*/
 
 # Resource Group Outputs
 output "resource_group_name" {

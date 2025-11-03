@@ -41,6 +41,7 @@
 ## 🎯 Recommendations
 
 ### 1. **Consolidate to Single K3s VM** ⭐ HIGH PRIORITY
+- [x] **DONE** - Remove the main VM and use only K3s VM
 
 **Current Issue**: You have TWO VMs:
 - `ameciclo-vm` (main VM) - Not being used
@@ -67,25 +68,30 @@
 ---
 
 ### 2. **Enable Storage Account & Container Registry** ⭐ MEDIUM PRIORITY
+- [x] **DONE** - Enable Storage Account (using GHCR for images)
+- [x] **DONE** - Remove Container Registry (using GHCR instead)
 
 **Current Issue**: Storage and Container Registry are commented out
 
-**Recommendation**: Uncomment and enable them for:
-- Image storage (backups, exports)
-- Container image registry
-- File uploads
+**Recommendation**:
+- ✅ Enable Storage Account for backups and file uploads
+- ✅ Remove Container Registry (using GitHub Container Registry instead)
 
 **Action**:
 ```hcl
-# In storage.tf and container_registry.tf:
+# In storage.tf:
 # - Uncomment all resources
 # - Update subnet references to use K3s subnet
 # - Add proper network rules
+
+# In container_registry.tf:
+# - DELETE (using GHCR instead)
 ```
 
 ---
 
 ### 3. **Add Terraform Locals for DRY Code** ⭐ MEDIUM PRIORITY
+- [x] **DONE** - Create locals.tf for common values
 
 **Current Issue**: Hardcoded values repeated across files
 
@@ -96,10 +102,10 @@
 locals {
   project_name = "ameciclo"
   environment  = "production"
-  
+
   # Naming conventions
   vm_name_prefix = "${local.project_name}-${local.environment}"
-  
+
   # Common tags
   common_tags = {
     Environment = local.environment
@@ -118,6 +124,7 @@ locals {
 ---
 
 ### 4. **Add terraform.tfvars.example with Real Defaults** ⭐ LOW PRIORITY
+- [x] **DONE** - Create terraform.tfvars.example with sensible defaults
 
 **Current Issue**: `terraform.tfvars.example` is missing
 
@@ -135,6 +142,7 @@ vm_size                   = "Standard_B2as_v2"
 ---
 
 ### 5. **Add Data Sources for Existing Resources** ⭐ LOW PRIORITY
+- [x] **DONE** - Add data sources for Azure images and client config
 
 **Recommendation**: Use data sources for Azure images
 
@@ -151,39 +159,52 @@ data "azurerm_image" "ubuntu" {
 ---
 
 ### 6. **Add Monitoring & Alerts** ⭐ MEDIUM PRIORITY
+- [ ] **NOT DONE** - Optional (adds ~$10-15/month cost)
 
-**Recommendation**: Add Azure Monitor resources
+**Cost Impact**: +$10-15/month for Log Analytics Workspace
+
+**Recommendation**: Add Azure Monitor resources for:
+- PostgreSQL performance monitoring
+- VM health checks
+- Alert rules for critical events
 
 ```hcl
 # monitoring.tf
 resource "azurerm_monitor_diagnostic_setting" "postgresql" {
   name               = "postgresql-diagnostics"
   target_resource_id = azurerm_postgresql_flexible_server.postgresql.id
-  
+
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-  
+
   enabled_log {
     category = "PostgreSQLLogs"
   }
 }
 ```
 
+**Decision**: Skip for now (can add later if needed)
+
 ---
 
 ### 7. **Add Backup & Disaster Recovery** ⭐ MEDIUM PRIORITY
+- [ ] **NOT DONE** - Optional (adds ~$5-10/month cost)
+
+**Cost Impact**: +$5-10/month for geo-redundant backups
 
 **Current**: PostgreSQL has 7-day backup retention
 
 **Recommendation**: Consider:
-- Increase backup retention to 30 days
-- Enable geo-redundant backups (if budget allows)
-- Add VM backup policy
+- Increase backup retention to 30 days (+$2-3/month)
+- Enable geo-redundant backups (+$3-7/month)
+- Add VM backup policy (+$5-10/month)
 
 ```hcl
 # In database.tf:
-backup_retention_days        = 30  # Increase from 7
-geo_redundant_backup_enabled = true  # Add this
+backup_retention_days        = 30  # Increase from 7 (+$2-3/month)
+geo_redundant_backup_enabled = true  # Add this (+$3-7/month)
 ```
+
+**Decision**: Keep current 7-day retention (cost-effective for dev/staging)
 
 ---
 
@@ -225,12 +246,19 @@ output "kubeconfig_path" {
 ---
 
 ### 10. **Add Cost Estimation** ⭐ LOW PRIORITY
+- [x] **DONE** - Document cost estimation
 
-**Current Monthly Costs**:
+**Current Monthly Costs** (After removing main VM):
 - PostgreSQL B2s: ~$24.70
 - K3s VM (B2as_v2): ~$40-50
-- Storage/Networking: ~$5-10
+- Storage Account (LRS): ~$0.50-2.00
+- Networking/IPs: ~$5-10
 - **Total**: ~$70-85/month
+
+**Optional Add-ons**:
+- Monitoring (Log Analytics): +$10-15/month
+- Geo-redundant backups: +$3-7/month
+- Extended backup retention: +$2-3/month
 
 **Recommendation**: Add cost tags for tracking
 
@@ -247,21 +275,25 @@ variable "cost_center" {
 
 ## 🚀 Priority Action Items
 
-### Phase 1 (Do First)
-1. ✅ Remove main VM (vm.tf) - Save $40/month
-2. ✅ Update outputs.tf to remove main VM outputs
-3. ✅ Test with `terraform plan`
+### Phase 1 (Do First) - COST OPTIMIZATION
+- [x] Remove main VM (vm.tf) - Save $40/month
+- [x] Update outputs.tf to remove main VM outputs
+- [x] Update variables.tf to remove main VM variables
+- [x] Test with `terraform plan`
 
-### Phase 2 (Do Next)
-1. ✅ Uncomment Storage Account
-2. ✅ Uncomment Container Registry
-3. ✅ Update network rules for K3s subnet
+### Phase 2 (Do Next) - INFRASTRUCTURE
+- [x] Uncomment Storage Account
+- [x] Remove Container Registry (using GHCR)
+- [x] Update network rules for K3s subnet
+- [x] Create locals.tf for DRY code
+- [x] Create terraform.tfvars.example
+- [x] Add data sources for Azure images
 
-### Phase 3 (Nice to Have)
-1. ✅ Create locals.tf for DRY code
-2. ✅ Add monitoring
-3. ✅ Restrict SSH to specific IPs
-4. ✅ Increase backup retention
+### Phase 3 (Nice to Have) - SECURITY & MONITORING
+- [ ] Restrict SSH to specific IPs
+- [ ] Add monitoring (optional, +$10-15/month)
+- [ ] Increase backup retention (optional, +$2-3/month)
+- [ ] Enable geo-redundant backups (optional, +$3-7/month)
 
 ---
 

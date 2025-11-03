@@ -1,27 +1,27 @@
-# VM Outputs
-output "vm_id" {
-  description = "Virtual Machine ID"
-  value       = azurerm_linux_virtual_machine.vm.id
+# K3s VM Outputs
+output "k3s_vm_id" {
+  description = "K3s Virtual Machine ID"
+  value       = azurerm_linux_virtual_machine.k3s.id
 }
 
-output "vm_name" {
-  description = "Virtual Machine name"
-  value       = azurerm_linux_virtual_machine.vm.name
+output "k3s_vm_name" {
+  description = "K3s Virtual Machine name"
+  value       = azurerm_linux_virtual_machine.k3s.name
 }
 
-output "vm_public_ip" {
-  description = "Virtual Machine public IP address"
-  value       = azurerm_public_ip.vm.ip_address
+output "k3s_vm_public_ip" {
+  description = "K3s Virtual Machine public IP address"
+  value       = azurerm_public_ip.k3s.ip_address
 }
 
-output "vm_private_ip" {
-  description = "Virtual Machine private IP address"
-  value       = azurerm_network_interface.vm.private_ip_address
+output "k3s_vm_private_ip" {
+  description = "K3s Virtual Machine private IP address"
+  value       = azurerm_network_interface.k3s.private_ip_address
 }
 
-output "vm_ssh_command" {
-  description = "SSH command to connect to the VM"
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.vm.ip_address}"
+output "k3s_vm_ssh_command" {
+  description = "SSH command to connect to K3s VM"
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.k3s.ip_address}"
 }
 
 # PostgreSQL Outputs
@@ -39,6 +39,22 @@ output "postgresql_connection_string" {
   description = "PostgreSQL connection string"
   value       = "postgresql://${var.postgresql_admin_username}:${var.postgresql_admin_password}@${azurerm_postgresql_flexible_server.postgresql.fqdn}:5432/atlas?sslmode=require"
   sensitive   = true
+}
+
+# Storage Account Outputs
+output "storage_account_name" {
+  description = "Storage account name"
+  value       = azurerm_storage_account.ameciclo.name
+}
+
+output "storage_account_id" {
+  description = "Storage account ID"
+  value       = azurerm_storage_account.ameciclo.id
+}
+
+output "storage_container_name" {
+  description = "Storage container name"
+  value       = azurerm_storage_container.ameciclo.name
 }
 
 # Resource Group Outputs

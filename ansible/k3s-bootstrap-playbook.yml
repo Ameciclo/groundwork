@@ -132,6 +132,10 @@
         /usr/local/bin/helm repo update
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
+      register: helm_repo_add
+      retries: 3
+      delay: 5
+      until: helm_repo_add.rc == 0
       changed_when: false
 
     # ========== Tailscale Operator Installation ==========
@@ -149,8 +153,12 @@
           --version {{ tailscale_operator_version }} \
           --set oauth.clientID="{{ tailscale_client_id }}" \
           --set oauth.clientSecret="{{ tailscale_client_secret }}" \
-          --wait
+          --wait \
+          --timeout 10m
       register: tailscale_install
+      retries: 2
+      delay: 30
+      until: tailscale_install.rc == 0 or 'cannot re-use a name' in tailscale_install.stderr
       changed_when: "'deployed' in tailscale_install.stdout or 'installed' in tailscale_install.stdout"
       failed_when: tailscale_install.rc != 0 and 'cannot re-use a name' not in tailscale_install.stderr
 
@@ -256,29 +264,28 @@
           ========================================
           K3s Bootstrap Complete!
           ========================================
-          
+
           K3s Version:
           {{ k3s_version_output.stdout }}
-          
+
           Nodes:
           {{ k3s_nodes.stdout }}
-          
+
           Tailscale Operator:
           {{ tailscale_status.stdout }}
-          
+
           ArgoCD:
           {{ argocd_status.stdout }}
-          
+
           ArgoCD Access:
           - URL: https://argocd.armadillo-hamal.ts.net
           - Username: admin
           - Password: {{ argocd_password.stdout }}
-          
+
           Kubeconfig: {{ user_kubeconfig_path }}
-          
+
           Next steps:
           1. Access ArgoCD at https://argocd.armadillo-hamal.ts.net
           2. Configure Git repository in ArgoCD
           3. Create Applications for your services
           ========================================
-

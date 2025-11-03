@@ -16,7 +16,7 @@
 # General Configuration
 # ============================================================================
 environment  = "production"
-region       = "eastus"
+region       = "eastus2"  # Changed from eastus (PostgreSQL not available there)
 project_name = "ameciclo"
 
 # ============================================================================

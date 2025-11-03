@@ -92,44 +92,6 @@
         enabled: yes
         daemon_reload: yes
 
-    # ========== Tailscale Client Installation ==========
-    - name: Install Tailscale client
-      shell: curl -fsSL https://tailscale.com/install.sh | bash
-      args:
-        creates: /usr/bin/tailscale
-      register: tailscale_client_install
-      retries: 3
-      delay: 10
-      until: tailscale_client_install.rc == 0
-
-    - name: Start and enable Tailscale daemon
-      systemd:
-        name: tailscaled
-        state: started
-        enabled: yes
-        daemon_reload: yes
-
-    - name: Wait for Tailscale daemon to be active
-      shell: systemctl is-active tailscaled
-      register: tailscaled_status
-      retries: 10
-      delay: 5
-      until: tailscaled_status.rc == 0
-      changed_when: false
-
-    - name: Connect Tailscale client with OAuth
-      shell: |
-        /usr/bin/tailscale up \
-          --oauth \
-          --advertise-routes={{ pod_cidr }},{{ service_cidr }} \
-          --accept-dns=false \
-          --accept-routes
-      register: tailscale_connect
-      retries: 3
-      delay: 10
-      until: tailscale_connect.rc == 0
-      changed_when: false
-
     # ========== Kubeconfig Setup ==========
     - name: Create .kube directory for user
       file:

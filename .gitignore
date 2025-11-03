@@ -8,3 +8,7 @@ terraform.tfvars
 # Docker stack environment files
 stacks/**/.env
 !stacks/kestra/.env
+
+# Helm chart dependencies
+helm/charts/*/charts/
+helm/charts/*/Chart.lock

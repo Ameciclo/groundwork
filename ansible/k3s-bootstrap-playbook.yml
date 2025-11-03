@@ -102,7 +102,14 @@
       delay: 10
       until: tailscale_client_install.rc == 0
 
-    - name: Wait for Tailscale daemon to start
+    - name: Start and enable Tailscale daemon
+      systemd:
+        name: tailscaled
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Wait for Tailscale daemon to be active
       shell: systemctl is-active tailscaled
       register: tailscaled_status
       retries: 10

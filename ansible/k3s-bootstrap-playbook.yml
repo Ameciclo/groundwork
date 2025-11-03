@@ -187,9 +187,10 @@
           name: k3s-subnet-router
           namespace: {{ tailscale_namespace }}
         spec:
-          subnetRoutes:
-            - {{ pod_cidr }}
-            - {{ service_cidr }}
+          subnetRouter:
+            advertiseRoutes:
+              - {{ pod_cidr }}
+              - {{ service_cidr }}
           hostname: k3s-subnet-router
         EOF
       changed_when: false

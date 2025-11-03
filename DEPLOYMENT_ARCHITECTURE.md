@@ -190,6 +190,252 @@ To deploy to a new cloud provider:
 - [ ] Configure backup strategy
 - [ ] Set up disaster recovery procedures
 
+## Phase 6: Production Hardening - Implementation Guide
+
+### 1. Configure RBAC Policies 🔐
+
+**What it is:** Role-Based Access Control - restricts who can do what in your cluster.
+
+**Implementation steps:**
+
+1. **Create ServiceAccounts** for different applications/teams
+2. **Define Roles** with specific permissions (get, list, create, update, delete)
+3. **Bind Roles to ServiceAccounts** using RoleBindings
+4. **Apply least privilege principle** - give only minimum permissions needed
+
+**Example RBAC setup:**
+```yaml
+# ServiceAccount for application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-deployer
+  namespace: default
+
+---
+# Role with limited permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployer-role
+  namespace: default
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+
+---
+# Bind role to service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployer-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deployer-role
+subjects:
+- kind: ServiceAccount
+  name: app-deployer
+  namespace: default
+```
+
+**Tools:** Kubernetes native RBAC (no additional tools needed)
+
+---
+
+### 2. Set up Monitoring and Logging 📊
+
+**What it is:** Observability - see what's happening in your cluster and applications.
+
+**Monitoring (Metrics):**
+- Deploy **Prometheus** - collects metrics from cluster and applications
+- Deploy **Grafana** - visualizes metrics in dashboards
+- Set up **AlertManager** - sends alerts when things go wrong
+
+**Logging (Logs):**
+- Deploy **Loki** - lightweight log aggregation
+- Deploy **Promtail** - ships logs to Loki
+- Alternative: **ELK Stack** (Elasticsearch, Logstash, Kibana) for larger deployments
+
+**Installation via Helm:**
+```bash
+# Add Helm repositories
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+# Install Prometheus + Grafana
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace
+
+# Install Loki + Promtail
+helm install loki grafana/loki-stack \
+  --namespace monitoring
+```
+
+**What to monitor:**
+- CPU, memory, disk usage
+- Pod restarts and failures
+- API response times
+- Error rates
+- Custom application metrics
+
+---
+
+### 3. Configure Backup Strategy 💾
+
+**What it is:** Ensure you can recover from disasters.
+
+**Backup components:**
+- **Kubernetes cluster state** - via Velero
+- **Persistent data** - PostgreSQL backups
+- **Manifests** - already in Git ✅
+- **Secrets and ConfigMaps** - included in Velero backups
+
+**Installation via Helm:**
+```bash
+# Add Velero Helm repository
+helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+helm repo update
+
+# Install Velero with Azure backend
+helm install velero vmware-tanzu/velero \
+  --namespace velero \
+  --create-namespace \
+  --set configuration.backupStorageLocation.bucket=ameciclo-backups \
+  --set configuration.backupStorageLocation.provider=azure \
+  --set configuration.schedules.daily.schedule="0 2 * * *" \
+  --set configuration.schedules.daily.template.ttl="720h"
+```
+
+**PostgreSQL backup strategy:**
+- Enable automated backups in Azure PostgreSQL (7-35 days retention)
+- Export backups to Azure Blob Storage
+- Test restore procedures monthly
+
+**Backup checklist:**
+- [ ] Daily automated backups enabled
+- [ ] Backups stored in separate location (Azure Blob Storage)
+- [ ] Multiple backup versions retained (daily, weekly, monthly)
+- [ ] Restore procedures tested and documented
+- [ ] Recovery Time Objective (RTO) defined (e.g., 1 hour)
+- [ ] Recovery Point Objective (RPO) defined (e.g., 1 day)
+
+---
+
+### 4. Set up Disaster Recovery Procedures 🚨
+
+**What it is:** Step-by-step procedures to recover from failures.
+
+**Create runbooks for:**
+
+**Scenario 1: Cluster completely down**
+```markdown
+1. Verify cluster is down: kubectl cluster-info
+2. Check Azure VM status in Azure Portal
+3. If VM is down, restart it
+4. If cluster is corrupted, restore from Velero:
+   - velero restore create --from-backup <backup-name>
+5. Verify all pods are running: kubectl get pods --all-namespaces
+6. Check ArgoCD is synced: kubectl get applications -n argocd
+7. Verify applications are healthy
+```
+
+**Scenario 2: Database corrupted**
+```markdown
+1. Stop all applications accessing database
+2. Restore PostgreSQL from backup in Azure Portal
+3. Verify data integrity
+4. Restart applications
+5. Monitor for errors
+```
+
+**Scenario 3: Accidental deletion of resources**
+```markdown
+1. Check if resource is in Git (should be)
+2. If yes, ArgoCD will auto-recreate it (self-healing)
+3. If no, restore from Velero backup
+4. Verify resource is restored
+```
+
+**Scenario 4: Security breach / compromised secrets**
+```markdown
+1. Rotate all secrets: kubectl delete secret <secret-name> -n <namespace>
+2. Update secret values in secure location
+3. Recreate secrets: kubectl create secret generic <secret-name> ...
+4. Restart affected pods to pick up new secrets
+5. Review audit logs: kubectl logs -n kube-system
+6. Update RBAC policies if needed
+```
+
+**Testing procedures:**
+- [ ] Run disaster recovery drills monthly
+- [ ] Simulate failures and practice recovery
+- [ ] Time how long recovery takes (RTO)
+- [ ] Measure data loss (RPO)
+- [ ] Document lessons learned
+- [ ] Update runbooks based on findings
+
+---
+
+### Implementation Order (Recommended)
+
+1. **Start with Monitoring** (easiest, most valuable)
+   - Deploy Prometheus + Grafana
+   - Get visibility into your cluster
+   - Set up basic alerts
+
+2. **Add Logging** (complements monitoring)
+   - Deploy Loki + Promtail
+   - Centralize all logs
+   - Create log dashboards
+
+3. **Configure RBAC** (security)
+   - Start with basic roles for applications
+   - Gradually refine permissions
+   - Document access policies
+
+4. **Set up Backups** (critical)
+   - Deploy Velero
+   - Configure PostgreSQL backups
+   - Test restore procedures
+
+5. **Document Runbooks** (ongoing)
+   - Create disaster recovery procedures
+   - Test them regularly
+   - Keep them updated
+
+---
+
+### Tools Summary
+
+| Component | Tool | Purpose | Helm Chart |
+|-----------|------|---------|-----------|
+| Monitoring | Prometheus | Metrics collection | `prometheus-community/kube-prometheus-stack` |
+| Monitoring | Grafana | Visualization | Included in kube-prometheus-stack |
+| Logging | Loki | Log aggregation | `grafana/loki-stack` |
+| Logging | Promtail | Log shipper | Included in loki-stack |
+| Backup | Velero | Cluster backup/restore | `vmware-tanzu/velero` |
+| RBAC | Kubernetes native | Access control | Built-in (no Helm needed) |
+
+---
+
+### Estimated Effort
+
+- **RBAC:** 2-4 hours (create roles for your applications)
+- **Monitoring:** 4-6 hours (deploy, configure dashboards, alerts)
+- **Logging:** 2-3 hours (deploy, configure log retention)
+- **Backups:** 3-4 hours (deploy Velero, test restores)
+- **Runbooks:** 4-6 hours (document procedures, test them)
+
+**Total:** ~15-25 hours for complete production hardening
+
 ## Current Status
 
 **Completed:**

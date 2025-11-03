@@ -1,0 +1,17 @@
+{{- if .Values.connector.enabled }}
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: {{ .Values.connector.name | default "k3s-subnet-router" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  # Configure as a subnet router to advertise K3s cluster networks
+  subnetRouter:
+    # Advertise the K3s cluster networks to Tailscale
+    advertiseRoutes:
+      # K3s service CIDR
+      - {{ .Values.connector.serviceCIDR | default "10.43.0.0/16" }}
+      # K3s pod CIDR
+      - {{ .Values.connector.podCIDR | default "10.10.0.0/16" }}
+{{- end }}
+

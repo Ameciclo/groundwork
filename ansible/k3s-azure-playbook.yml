@@ -1,0 +1,243 @@
+---
+# K3s Installation and Configuration for Azure VM
+# This playbook sets up K3s on an Azure VM with ArgoCD for GitOps
+# 
+# Usage:
+#   ansible-playbook -i ansible/k3s-azure-inventory.yml ansible/k3s-azure-playbook.yml
+#
+# Prerequisites:
+#   - Azure VM with Ubuntu 22.04 LTS
+#   - SSH access configured
+#   - Terraform outputs available (VM public IP, etc.)
+
+- name: Install K3s and ArgoCD on Azure VM
+  hosts: k3s_azure
+  become: true
+  gather_facts: yes
+  
+  vars:
+    k3s_version: "v1.32.4+k3s1"
+    argocd_version: "7.3.3"
+    argocd_namespace: "argocd"
+    k3s_data_dir: "/var/lib/rancher/k3s"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+    user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
+
+  pre_tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          ========================================
+          K3s Installation on Azure VM
+          ========================================
+          Hostname: {{ inventory_hostname }}
+          IP Address: {{ ansible_default_ipv4.address }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          K3s Version: {{ k3s_version }}
+          ArgoCD Version: {{ argocd_version }}
+          ========================================
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - jq
+          - unzip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - net-tools
+          - htop
+        state: present
+
+  tasks:
+    # ========== K3s Installation ==========
+    - name: Install K3s
+      shell: |
+        curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        INSTALL_K3S_EXEC="--disable=traefik --disable=servicelb" \
+        sh -
+      args:
+        creates: /usr/local/bin/k3s
+      environment:
+        INSTALL_K3S_SKIP_DOWNLOAD: "false"
+      register: k3s_install
+      changed_when: "'installed' in k3s_install.stdout or 'updated' in k3s_install.stdout"
+
+    - name: Wait for K3s to be ready
+      shell: |
+        /usr/local/bin/k3s kubectl get nodes
+      register: k3s_ready
+      until: k3s_ready.rc == 0
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Enable K3s service
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ========== Kubeconfig Setup ==========
+    - name: Create .kube directory for user
+      file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+
+    - name: Copy kubeconfig to user home
+      shell: |
+        cp {{ kubeconfig_path }} {{ user_kubeconfig_path }}
+        chown {{ ansible_user }}:{{ ansible_user }} {{ user_kubeconfig_path }}
+        chmod 600 {{ user_kubeconfig_path }}
+      changed_when: false
+
+    - name: Update kubeconfig with public IP
+      shell: |
+        sed -i 's/127.0.0.1/{{ ansible_default_ipv4.address }}/g' {{ user_kubeconfig_path }}
+      changed_when: false
+
+    # ========== Helm Installation ==========
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+      register: helm_install
+      changed_when: "'Helm' in helm_install.stdout"
+
+    # ========== ArgoCD Installation ==========
+    - name: Create ArgoCD namespace
+      shell: |
+        /usr/local/bin/k3s kubectl create namespace {{ argocd_namespace }} --dry-run=client -o yaml | \
+        /usr/local/bin/k3s kubectl apply -f -
+      changed_when: false
+
+    - name: Add ArgoCD Helm repository
+      shell: |
+        /usr/local/bin/helm repo add argo https://argoproj.github.io/argo-helm
+        /usr/local/bin/helm repo update
+      changed_when: false
+
+    - name: Install ArgoCD via Helm
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/helm upgrade --install argocd argo/argo-cd \
+          --namespace {{ argocd_namespace }} \
+          --version {{ argocd_version }} \
+          --set server.service.type=LoadBalancer \
+          --set server.insecure=true \
+          --wait \
+          --timeout 5m
+      register: argocd_install
+      changed_when: "'deployed' in argocd_install.stdout or 'installed' in argocd_install.stdout"
+      failed_when: argocd_install.rc != 0 and 'cannot re-use a name' not in argocd_install.stderr
+
+    - name: Wait for ArgoCD server to be ready
+      shell: |
+        /usr/local/bin/k3s kubectl get pods -n {{ argocd_namespace }} \
+          -l app.kubernetes.io/name=argocd-server \
+          -o jsonpath='{.items[0].status.phase}'
+      register: argocd_status
+      until: argocd_status.stdout == "Running"
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    # ========== Get Credentials ==========
+    - name: Get ArgoCD initial admin password
+      shell: |
+        /usr/local/bin/k3s kubectl -n {{ argocd_namespace }} \
+          get secret argocd-initial-admin-secret \
+          -o jsonpath="{.data.password}" | base64 -d
+      register: argocd_password
+      changed_when: false
+
+    - name: Get ArgoCD service info
+      shell: |
+        /usr/local/bin/k3s kubectl get svc -n {{ argocd_namespace }} argocd-server
+      register: argocd_svc
+      changed_when: false
+
+    # ========== Display Information ==========
+    - name: Display K3s cluster information
+      debug:
+        msg: |
+          ========================================
+          ✅ K3s Installation Complete!
+          ========================================
+          
+          Cluster Info:
+          {{ k3s_ready.stdout }}
+          
+          Nodes:
+          {{ k3s_nodes.stdout }}
+          
+          ========================================
+          ArgoCD Access Information
+          ========================================
+          
+          URL: http://{{ ansible_default_ipv4.address }}:80
+          Username: admin
+          Password: {{ argocd_password.stdout }}
+          
+          Service Info:
+          {{ argocd_svc.stdout }}
+          
+          ========================================
+          Next Steps:
+          ========================================
+          1. Access ArgoCD at the URL above
+          2. Change the admin password
+          3. Configure Git repository for GitOps
+          4. Deploy applications via ArgoCD
+          
+          Kubeconfig location: {{ user_kubeconfig_path }}
+          ========================================
+
+    - name: Get K3s nodes
+      shell: |
+        /usr/local/bin/k3s kubectl get nodes -o wide
+      register: k3s_nodes
+      changed_when: false
+
+  post_tasks:
+    - name: Save deployment summary
+      copy:
+        content: |
+          K3s Deployment Summary
+          ======================
+          
+          Deployment Date: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          IP: {{ ansible_default_ipv4.address }}
+          
+          K3s Version: {{ k3s_version }}
+          ArgoCD Version: {{ argocd_version }}
+          
+          Kubeconfig: {{ user_kubeconfig_path }}
+          
+          ArgoCD Admin Password: {{ argocd_password.stdout }}
+          
+          Access URLs:
+          - ArgoCD: http://{{ ansible_default_ipv4.address }}:80
+          
+        dest: "/home/{{ ansible_user }}/k3s-deployment-summary.txt"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+      changed_when: false
+

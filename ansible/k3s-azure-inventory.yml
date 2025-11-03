@@ -1,0 +1,40 @@
+# Ansible Inventory for K3s on Azure VM
+# 
+# Usage:
+#   ansible-playbook -i ansible/k3s-azure-inventory.yml ansible/k3s-azure-playbook.yml
+#
+# Before running:
+#   1. Get the public IP from Terraform: terraform output vm_public_ip
+#   2. Update the ansible_host value below
+#   3. Ensure your SSH key is in ~/.ssh/id_rsa or update ansible_ssh_private_key_file
+
+all:
+  children:
+    k3s_azure:
+      hosts:
+        ameciclo-k3s-azure:
+          # Azure VM public IP (get from: terraform output vm_public_ip)
+          ansible_host: "YOUR_VM_PUBLIC_IP"
+          
+          # SSH connection settings
+          ansible_user: azureuser
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          
+          # Become settings (use SSH key-based sudo, no password)
+          ansible_become: true
+          ansible_become_method: sudo
+          ansible_become_password: ""
+          
+          # Python interpreter (Ubuntu 22.04 uses python3)
+          ansible_python_interpreter: /usr/bin/python3
+          
+          # K3s specific variables
+          k3s_version: "v1.32.4+k3s1"
+          argocd_version: "7.3.3"
+          
+          # PostgreSQL connection info (if needed)
+          postgres_server_fqdn: "ameciclo-postgres.postgres.database.azure.com"
+          postgres_admin_user: "psqladmin"
+          # postgres_admin_password: Set via environment variable TF_VAR_postgresql_admin_password
+

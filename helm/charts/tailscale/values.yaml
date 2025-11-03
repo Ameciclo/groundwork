@@ -1,14 +1,8 @@
 tailscale-operator:
   enabled: true
+  # OAuth credentials - the chart will create a secret named 'operator-oauth'
+  # with these values. Store actual values in environment or use kubectl to
+  # update the secret after deployment.
   oauth:
-    # Secrets are stored in Kubernetes secret 'tailscale-oauth-secret'
-    # Create with: kubectl create secret generic tailscale-oauth-secret \
-    #   --from-literal=clientId=YOUR_CLIENT_ID \
-    #   --from-literal=clientSecret=YOUR_CLIENT_SECRET \
-    #   -n tailscale
     clientId: ""
     clientSecret: ""
-    # Reference the secret instead
-    existingSecret: tailscale-oauth-secret
-    existingSecretClientIdKey: clientId
-    existingSecretClientSecretKey: clientSecret

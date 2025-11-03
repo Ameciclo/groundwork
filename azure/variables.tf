@@ -114,9 +114,9 @@ variable "postgresql_admin_password" {
 
 # Storage Account
 variable "storage_account_name" {
-  description = "Storage account name (must be globally unique, lowercase)"
+  description = "Storage account name (must be globally unique, lowercase, 3-24 chars)"
   type        = string
-  default     = "ameciclostorage"
+  default     = "ameciclo2024storage"
 }
 
 variable "storage_account_tier" {

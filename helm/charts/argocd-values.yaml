@@ -1,0 +1,40 @@
+# ArgoCD Official Helm Chart Values
+# Configured for Tailscale ingress access
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: tailscale
+    annotations:
+      tailscale.com/expose: "true"
+    hosts:
+      - argocd
+    paths:
+      - /
+    pathType: Prefix
+    tls: []
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+
+# Disable components we don't need for now
+applicationSet:
+  enabled: true
+
+notifications:
+  enabled: false
+
+dex:
+  enabled: false
+
+redis:
+  enabled: true
+
+repoServer:
+  replicas: 1
+
+controller:
+  replicas: 1
+

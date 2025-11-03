@@ -8,12 +8,12 @@ resource "azurerm_virtual_network" "ameciclo" {
   tags = var.tags
 }
 
-# VM Subnet
-resource "azurerm_subnet" "vm" {
-  name                 = var.vm_subnet_name
+# K3s Subnet
+resource "azurerm_subnet" "k3s" {
+  name                 = "k3s-subnet"
   resource_group_name  = azurerm_resource_group.ameciclo.name
   virtual_network_name = azurerm_virtual_network.ameciclo.name
-  address_prefixes     = var.vm_subnet_prefix
+  address_prefixes     = ["10.10.1.0/24"]
 }
 
 # Database Subnet
@@ -36,9 +36,9 @@ resource "azurerm_subnet" "database" {
   }
 }
 
-# Network Security Group for VM
-resource "azurerm_network_security_group" "vm" {
-  name                = "${var.project_name}-vm-nsg"
+# Network Security Group for K3s
+resource "azurerm_network_security_group" "k3s" {
+  name                = "${var.project_name}-k3s-nsg"
   location            = azurerm_resource_group.ameciclo.location
   resource_group_name = azurerm_resource_group.ameciclo.name
 
@@ -46,7 +46,7 @@ resource "azurerm_network_security_group" "vm" {
 }
 
 # Allow SSH
-resource "azurerm_network_security_rule" "allow_ssh" {
+resource "azurerm_network_security_rule" "k3s_ssh" {
   name                        = "AllowSSH"
   priority                    = 100
   direction                   = "Inbound"
@@ -57,13 +57,13 @@ resource "azurerm_network_security_rule" "allow_ssh" {
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.ameciclo.name
-  network_security_group_name = azurerm_network_security_group.vm.name
+  network_security_group_name = azurerm_network_security_group.k3s.name
 }
 
 # Allow HTTP
-resource "azurerm_network_security_rule" "allow_http" {
+resource "azurerm_network_security_rule" "k3s_http" {
   name                        = "AllowHTTP"
-  priority                    = 101
+  priority                    = 110
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
@@ -72,13 +72,13 @@ resource "azurerm_network_security_rule" "allow_http" {
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.ameciclo.name
-  network_security_group_name = azurerm_network_security_group.vm.name
+  network_security_group_name = azurerm_network_security_group.k3s.name
 }
 
 # Allow HTTPS
-resource "azurerm_network_security_rule" "allow_https" {
+resource "azurerm_network_security_rule" "k3s_https" {
   name                        = "AllowHTTPS"
-  priority                    = 102
+  priority                    = 120
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
@@ -87,7 +87,22 @@ resource "azurerm_network_security_rule" "allow_https" {
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.ameciclo.name
-  network_security_group_name = azurerm_network_security_group.vm.name
+  network_security_group_name = azurerm_network_security_group.k3s.name
+}
+
+# Allow K3s API server
+resource "azurerm_network_security_rule" "k3s_api" {
+  name                        = "AllowK3sAPI"
+  priority                    = 130
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "6443"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.ameciclo.name
+  network_security_group_name = azurerm_network_security_group.k3s.name
 }
 
 
@@ -112,16 +127,16 @@ resource "azurerm_network_security_rule" "allow_postgres_k3s" {
   protocol                    = "Tcp"
   source_port_range           = "*"
   destination_port_range      = "5432"
-  source_address_prefix       = var.k3s_subnet_prefix[0]
+  source_address_prefix       = "10.10.1.0/24"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.ameciclo.name
   network_security_group_name = azurerm_network_security_group.database.name
 }
 
-# Associate NSG with VM subnet
-resource "azurerm_subnet_network_security_group_association" "vm" {
-  subnet_id                 = azurerm_subnet.vm.id
-  network_security_group_id = azurerm_network_security_group.vm.id
+# Associate NSG with K3s subnet
+resource "azurerm_subnet_network_security_group_association" "k3s" {
+  subnet_id                 = azurerm_subnet.k3s.id
+  network_security_group_id = azurerm_network_security_group.k3s.id
 }
 
 # Associate NSG with Database subnet
@@ -130,29 +145,69 @@ resource "azurerm_subnet_network_security_group_association" "database" {
   network_security_group_id = azurerm_network_security_group.database.id
 }
 
-# VNet Peering: Connect main VNet to K3s VNet
-resource "azurerm_virtual_network_peering" "main_to_k3s" {
-  name                      = "main-to-k3s"
-  resource_group_name       = azurerm_resource_group.ameciclo.name
-  virtual_network_name      = azurerm_virtual_network.ameciclo.name
-  remote_virtual_network_id = azurerm_virtual_network.k3s.id
+# Create public IP for K3s VM
+resource "azurerm_public_ip" "k3s" {
+  name                = "ameciclo-k3s-pip"
+  location            = azurerm_resource_group.ameciclo.location
+  resource_group_name = azurerm_resource_group.ameciclo.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
 
-  allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
-  use_remote_gateways          = false
+  tags = var.tags
 }
 
-# VNet Peering: Connect K3s VNet to main VNet
-resource "azurerm_virtual_network_peering" "k3s_to_main" {
-  name                      = "k3s-to-main"
-  resource_group_name       = azurerm_resource_group.k3s.name
-  virtual_network_name      = azurerm_virtual_network.k3s.name
-  remote_virtual_network_id = azurerm_virtual_network.ameciclo.id
+# Create network interface for K3s VM
+resource "azurerm_network_interface" "k3s" {
+  name                = "ameciclo-k3s-nic"
+  location            = azurerm_resource_group.ameciclo.location
+  resource_group_name = azurerm_resource_group.ameciclo.name
 
-  allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
-  use_remote_gateways          = false
+  ip_configuration {
+    name                          = "testconfiguration1"
+    subnet_id                     = azurerm_subnet.k3s.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = "10.10.1.4"
+    public_ip_address_id          = azurerm_public_ip.k3s.id
+  }
+
+  tags = var.tags
+}
+
+# Create K3s VM
+resource "azurerm_linux_virtual_machine" "k3s" {
+  name                = "ameciclo-k3s-vm"
+  location            = azurerm_resource_group.ameciclo.location
+  resource_group_name = azurerm_resource_group.ameciclo.name
+  size                = "Standard_B2as_v2"
+
+  admin_username = "azureuser"
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = var.admin_ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  network_interface_ids = [
+    azurerm_network_interface.k3s.id,
+  ]
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "K3s"
+    }
+  )
 }
 

@@ -7,17 +7,10 @@ data "azurerm_client_config" "current" {}
 # Get current subscription
 data "azurerm_subscription" "current" {}
 
-# Get available Ubuntu 22.04 LTS image
-# This ensures we always use the latest patched version
-data "azurerm_image" "ubuntu" {
-  name_regex          = "Ubuntu-22.04-LTS"
-  resource_group_name = "UbuntuImages"
-  sort_by             = "name"
-  sort_order          = "Descending"
-
-  # Fallback: if image not found, we'll use the hardcoded values in vm.tf
-  # This is optional and can be removed if you prefer hardcoded values
-}
+# Note: Ubuntu image data source - can be used for future reference
+# Currently using latest Ubuntu 22.04 LTS from Canonical publisher
+# The azurerm_image data source is not used in this configuration
+# as we reference the image directly from the Canonical publisher
 
 # Outputs for debugging
 output "current_subscription_id" {

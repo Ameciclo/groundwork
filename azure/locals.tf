@@ -27,35 +27,29 @@ locals {
   storage_name        = var.storage_account_name
 
   # Network configuration
-  vnet_address_space       = var.vnet_address_space
-  vm_subnet_prefix         = var.vm_subnet_prefix
-  database_subnet_prefix   = var.database_subnet_prefix
-  k3s_subnet_prefix        = var.k3s_subnet_prefix
+  vnet_address_space     = var.vnet_address_space
+  database_subnet_prefix = var.database_subnet_prefix
+  k3s_subnet_prefix      = "10.10.1.0/24"
 
   # Database configuration
   postgresql_version = var.postgresql_version
   postgresql_sku     = var.postgresql_sku_name
   postgresql_storage = var.postgresql_storage_mb
 
-  # VM configuration
-  vm_size = var.vm_size
-  vm_os_disk_size = var.vm_os_disk_size_gb
+  # K3s VM configuration
+  k3s_vm_size = var.k3s_vm_size
+  k3s_vm_name = "ameciclo-k3s-vm"
 
-  # Image configuration
-  vm_image = {
-    publisher = var.vm_image_publisher
-    offer     = var.vm_image_offer
-    sku       = var.vm_image_sku
-    version   = var.vm_image_version
+  # K3s image configuration (Ubuntu 22.04 LTS)
+  k3s_image = {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
   }
 
   # Admin configuration
   admin_username = var.admin_username
-
-  # K3s configuration
-  k3s_enabled = var.k3s_enabled
-  k3s_version = var.k3s_version
-  k3s_region  = var.azure_region
 
   # Cost tracking
   cost_center = "ameciclo-infrastructure"

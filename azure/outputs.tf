@@ -21,7 +21,7 @@ output "k3s_vm_private_ip" {
 
 output "k3s_vm_ssh_command" {
   description = "SSH command to connect to K3s VM"
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.k3s.ip_address}"
+  value       = "ssh azureuser@${azurerm_public_ip.k3s.ip_address}"
 }
 
 # PostgreSQL Outputs

@@ -131,72 +131,11 @@ variable "storage_account_replication_type" {
   default     = "LRS"
 }
 
-# Container Registry
-variable "container_registry_name" {
-  description = "Container Registry name (must be globally unique, lowercase)"
-  type        = string
-  default     = "amecicloregistry"
-}
-
-variable "container_registry_sku" {
-  description = "Container Registry SKU"
-  type        = string
-  default     = "Standard"
-}
-
-# Virtual Machine
-variable "vm_name" {
-  description = "Virtual Machine name"
-  type        = string
-  default     = "ameciclo-vm"
-}
-
-variable "vm_size" {
-  description = "VM size for compute"
+# K3s VM Configuration
+variable "k3s_vm_size" {
+  description = "VM size for K3s"
   type        = string
   default     = "Standard_B2as_v2"
-}
-
-variable "vm_subnet_name" {
-  description = "VM subnet name"
-  type        = string
-  default     = "vm-subnet"
-}
-
-variable "vm_subnet_prefix" {
-  description = "VM subnet address prefix"
-  type        = list(string)
-  default     = ["10.10.3.0/24"]
-}
-
-variable "vm_os_disk_size_gb" {
-  description = "VM OS disk size in GB"
-  type        = number
-  default     = 30
-}
-
-variable "vm_image_publisher" {
-  description = "VM image publisher"
-  type        = string
-  default     = "Canonical"
-}
-
-variable "vm_image_offer" {
-  description = "VM image offer"
-  type        = string
-  default     = "0001-com-ubuntu-server-jammy"
-}
-
-variable "vm_image_sku" {
-  description = "VM image SKU"
-  type        = string
-  default     = "22_04-lts-gen2"
-}
-
-variable "vm_image_version" {
-  description = "VM image version"
-  type        = string
-  default     = "latest"
 }
 
 variable "admin_username" {
@@ -211,31 +150,6 @@ variable "admin_ssh_public_key" {
   sensitive   = true
 }
 
-# K3s Configuration
-variable "k3s_enabled" {
-  description = "Enable K3s deployment"
-  type        = bool
-  default     = false
-}
-
-variable "k3s_version" {
-  description = "K3s version"
-  type        = string
-  default     = "v1.32.4+k3s1"
-}
-
-variable "k3s_vm_size" {
-  description = "VM size for K3s"
-  type        = string
-  default     = "Standard_B2as_v2"
-}
-
-variable "k3s_subnet_prefix" {
-  description = "K3s subnet address prefix"
-  type        = list(string)
-  default     = ["10.20.1.0/24"]
-}
-
 # Tags
 variable "tags" {
   description = "Common tags for all resources"
@@ -245,12 +159,5 @@ variable "tags" {
     Project     = "ameciclo"
     ManagedBy   = "terraform"
   }
-}
-
-# Azure Region (used by K3s)
-variable "azure_region" {
-  description = "Azure region for K3s deployment"
-  type        = string
-  default     = "westus3"
 }
 

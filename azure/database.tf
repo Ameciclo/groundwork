@@ -6,22 +6,11 @@ resource "azurerm_private_dns_zone" "postgresql" {
   tags = var.tags
 }
 
-# Link Private DNS Zone to main Virtual Network
-resource "azurerm_private_dns_zone_virtual_network_link" "postgresql_main" {
-  name                  = "postgresql-vnet-link-main"
+# Link Private DNS Zone to Virtual Network
+resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
+  name                  = "postgresql-vnet-link"
   private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
   virtual_network_id    = azurerm_virtual_network.ameciclo.id
-  resource_group_name   = azurerm_resource_group.ameciclo.name
-  registration_enabled  = false
-
-  tags = var.tags
-}
-
-# Link Private DNS Zone to K3s Virtual Network
-resource "azurerm_private_dns_zone_virtual_network_link" "postgresql_k3s" {
-  name                  = "postgresql-vnet-link-k3s"
-  private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
-  virtual_network_id    = azurerm_virtual_network.k3s.id
   resource_group_name   = azurerm_resource_group.ameciclo.name
   registration_enabled  = false
 
@@ -56,8 +45,7 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   tags = var.tags
 
   depends_on = [
-    azurerm_private_dns_zone_virtual_network_link.postgresql_main,
-    azurerm_private_dns_zone_virtual_network_link.postgresql_k3s
+    azurerm_private_dns_zone_virtual_network_link.postgresql
   ]
 }
 

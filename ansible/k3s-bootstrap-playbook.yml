@@ -94,13 +94,21 @@
 
     # ========== Tailscale Client Installation ==========
     - name: Install Tailscale client
-      shell: curl -fsSL https://tailscale.com/install.sh | sh
+      shell: curl -fsSL https://tailscale.com/install.sh | bash
       args:
         creates: /usr/bin/tailscale
       register: tailscale_client_install
       retries: 3
       delay: 10
       until: tailscale_client_install.rc == 0
+
+    - name: Wait for Tailscale daemon to start
+      shell: systemctl is-active tailscaled
+      register: tailscaled_status
+      retries: 10
+      delay: 5
+      until: tailscaled_status.rc == 0
+      changed_when: false
 
     - name: Connect Tailscale client with OAuth
       shell: |

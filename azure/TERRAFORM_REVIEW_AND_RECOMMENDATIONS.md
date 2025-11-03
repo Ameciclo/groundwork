@@ -8,37 +8,74 @@
 
 ---
 
-## 📋 Current Architecture
+## 📋 Current Architecture (NEEDS SIMPLIFICATION)
 
-### Resources Being Created
+### ⚠️ ISSUE: Duplicate Networking
 
+**Current (Redundant)**:
 1. **Resource Groups** (2)
    - `ameciclo-rg` - Main resources
-   - `ameciclo-k3s-rg` - K3s cluster
+   - `ameciclo-k3s-rg` - K3s cluster (REDUNDANT)
 
-2. **Networking**
-   - 2 Virtual Networks (main + K3s)
-   - 3 Subnets (VM, Database, K3s)
-   - VNet Peering (main ↔ K3s)
-   - 3 Network Security Groups with rules
+2. **Networking** (DUPLICATED)
+   - 2 Virtual Networks (main + K3s) - SHOULD BE 1
+   - 3 Subnets (VM, Database, K3s) - SHOULD BE 2
+   - VNet Peering (main ↔ K3s) - NOT NEEDED
+   - 3 Network Security Groups - SHOULD BE 2
 
 3. **Database**
    - PostgreSQL Flexible Server (B2s tier, ~$24.70/month)
    - 2 Databases (atlas, kong)
-   - Private DNS Zone for secure access
+   - Private DNS Zone linked to BOTH VNets (SHOULD BE 1)
 
 4. **Compute**
-   - 2 VMs (main VM + K3s VM)
-   - Public IPs for both
-   - Network Interfaces
+   - ~~2 VMs (main VM + K3s VM)~~ ✅ FIXED - Now only K3s VM
+   - Public IPs (only K3s)
+   - Network Interfaces (only K3s)
 
-5. **Storage & Registry** (Commented out)
-   - Storage Account (disabled)
-   - Container Registry (disabled)
+5. **Storage**
+   - Storage Account (enabled)
+   - Using GHCR for images (no Container Registry)
 
 ---
 
 ## 🎯 Recommendations
+
+### 0. **Consolidate to Single VNet** ⭐ CRITICAL PRIORITY
+- [ ] **TODO** - Merge main VNet and K3s VNet into one
+
+**Current Issue**: You have TWO VNets with duplicate networking:
+- `ameciclo-vnet` (10.10.0.0/16) - Main VNet with VM subnet + database subnet
+- `ameciclo-k3s-vnet` (10.20.0.0/16) - K3s VNet with K3s subnet
+- VNet Peering connecting them (unnecessary)
+- PostgreSQL linked to BOTH VNets (redundant)
+
+**Recommendation**: Consolidate to SINGLE VNet with 2 subnets:
+- `ameciclo-vnet` (10.10.0.0/16)
+  - `k3s-subnet` (10.10.1.0/24) - K3s VM
+  - `database-subnet` (10.10.2.0/24) - PostgreSQL
+
+**Benefits**:
+- ✅ Simpler architecture
+- ✅ Remove VNet peering complexity
+- ✅ Single private DNS zone
+- ✅ Easier to manage
+- ✅ Slightly lower costs (no peering)
+
+**Action**:
+```bash
+# Delete:
+# - azure/k3s.tf (K3s VNet, RG, NSG, VM)
+# - Remove VNet peering from network.tf
+
+# Consolidate:
+# - Move K3s VM to network.tf
+# - Move K3s NSG to network.tf
+# - Update database.tf to use single VNet
+# - Update resource_group.tf to use single RG
+```
+
+---
 
 ### 1. **Consolidate to Single K3s VM** ⭐ HIGH PRIORITY
 - [x] **DONE** - Remove the main VM and use only K3s VM
@@ -275,13 +312,13 @@ variable "cost_center" {
 
 ## 🚀 Priority Action Items
 
-### Phase 1 (Do First) - COST OPTIMIZATION
+### Phase 1 (Do First) - COST OPTIMIZATION ✅ DONE
 - [x] Remove main VM (vm.tf) - Save $40/month
 - [x] Update outputs.tf to remove main VM outputs
 - [x] Update variables.tf to remove main VM variables
 - [x] Test with `terraform plan`
 
-### Phase 2 (Do Next) - INFRASTRUCTURE
+### Phase 2 (Do Next) - INFRASTRUCTURE ✅ DONE
 - [x] Uncomment Storage Account
 - [x] Remove Container Registry (using GHCR)
 - [x] Update network rules for K3s subnet
@@ -289,7 +326,16 @@ variable "cost_center" {
 - [x] Create terraform.tfvars.example
 - [x] Add data sources for Azure images
 
-### Phase 3 (Nice to Have) - SECURITY & MONITORING
+### Phase 3 (CRITICAL) - NETWORK CONSOLIDATION ⚠️ TODO
+- [ ] Consolidate to single VNet (10.10.0.0/16)
+- [ ] Move K3s VM from k3s.tf to network.tf
+- [ ] Remove k3s.tf file
+- [ ] Remove VNet peering
+- [ ] Update database.tf to use single VNet
+- [ ] Remove duplicate resource group
+- [ ] Test with `terraform plan`
+
+### Phase 4 (Nice to Have) - SECURITY & MONITORING
 - [ ] Restrict SSH to specific IPs
 - [ ] Add monitoring (optional, +$10-15/month)
 - [ ] Increase backup retention (optional, +$2-3/month)
@@ -299,51 +345,62 @@ variable "cost_center" {
 
 ## 📊 File Organization
 
-**Current Structure** (Good):
+**Current Structure** (Needs Consolidation):
 ```
 azure/
 ├── main.tf              # Provider config
+├── locals.tf            # DRY code ✅
+├── data_sources.tf      # Data sources ✅
 ├── variables.tf         # All variables
-├── outputs.tf           # All outputs
-├── resource_group.tf    # Resource groups
-├── network.tf           # VNets, subnets, NSGs
-├── vm.tf                # Main VM (REMOVE)
-├── k3s.tf               # K3s VM
-├── database.tf          # PostgreSQL
-├── storage.tf           # Storage (commented)
-└── container_registry.tf # Registry (commented)
+├── outputs.tf           # All outputs ✅
+├── terraform.tfvars.example  # Example values ✅
+├── resource_group.tf    # Resource groups (NEEDS UPDATE)
+├── network.tf           # VNets, subnets, NSGs (NEEDS UPDATE)
+├── k3s.tf               # K3s VM (SHOULD MERGE TO network.tf)
+├── database.tf          # PostgreSQL (NEEDS UPDATE)
+└── storage.tf           # Storage Account ✅
 ```
 
-**Recommended Additions**:
+**Recommended After Consolidation**:
 ```
 azure/
+├── main.tf              # Provider config
 ├── locals.tf            # Common values
-├── monitoring.tf        # Azure Monitor
-├── security.tf          # Security groups, policies
-└── terraform.tfvars.example  # Example values
+├── data_sources.tf      # Data sources
+├── variables.tf         # All variables
+├── outputs.tf           # All outputs
+├── terraform.tfvars.example  # Example values
+├── resource_group.tf    # Single resource group
+├── network.tf           # Single VNet + all subnets + K3s VM + NSGs
+├── database.tf          # PostgreSQL (single VNet)
+└── storage.tf           # Storage Account
 ```
 
 ---
 
 ## ✅ Summary
 
-**What's Good**:
+**What's Good** ✅:
 - ✅ Clean separation of concerns
 - ✅ Good use of variables
 - ✅ Proper tagging strategy
 - ✅ Private database access
-- ✅ VNet peering configured
+- ✅ Single K3s VM (cost optimized)
+- ✅ Storage Account enabled
+- ✅ DRY code with locals.tf
+- ✅ Comprehensive terraform.tfvars.example
 
-**What to Improve**:
-- ⚠️ Remove unused main VM
-- ⚠️ Enable Storage & Registry
-- ⚠️ Add locals for DRY code
-- ⚠️ Restrict SSH access
-- ⚠️ Add monitoring
+**What to Improve** ⚠️:
+- ⚠️ **CRITICAL**: Duplicate VNets (main + K3s) - CONSOLIDATE
+- ⚠️ Unnecessary VNet peering
+- ⚠️ Duplicate resource groups
+- ⚠️ PostgreSQL linked to both VNets
+- ⚠️ Restrict SSH access (security)
+- ⚠️ Add monitoring (optional)
 
 **Next Steps**:
-1. Run `terraform plan` to verify current state
-2. Remove main VM (Phase 1)
-3. Enable Storage & Registry (Phase 2)
-4. Add monitoring (Phase 3)
+1. ✅ Phase 1: Remove main VM (DONE)
+2. ✅ Phase 2: Enable Storage & DRY code (DONE)
+3. ⚠️ Phase 3: Consolidate VNets (TODO - CRITICAL)
+4. Phase 4: Add monitoring (optional)
 

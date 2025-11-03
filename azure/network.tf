@@ -107,6 +107,21 @@ resource "azurerm_network_security_rule" "k3s_api" {
   network_security_group_name = azurerm_network_security_group.k3s.name
 }
 
+# Allow NodePort services (30000-32767)
+resource "azurerm_network_security_rule" "k3s_nodeport" {
+  name                        = "AllowNodePort"
+  priority                    = 140
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "30000-32767"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.ameciclo.name
+  network_security_group_name = azurerm_network_security_group.k3s.name
+}
+
 
 
 # Network Security Group for Database

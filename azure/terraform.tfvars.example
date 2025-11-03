@@ -53,7 +53,7 @@ postgresql_admin_username = "psqladmin"
 # ============================================================================
 # Note: Must be globally unique and lowercase (3-24 characters)
 # Change this to a unique name if you get "already exists" errors
-storage_account_name             = "ameciclo2024storage"
+storage_account_name             = "ameciclostorage"
 storage_account_tier             = "Standard"
 storage_account_replication_type = "LRS"  # Locally Redundant Storage
 

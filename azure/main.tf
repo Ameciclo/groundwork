@@ -4,17 +4,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.0"
-    }
   }
 
-  # Using Terraform Cloud
+  # Using Terraform Cloud for state management
   cloud {
     organization = "Ameciclo"
 
@@ -22,11 +14,6 @@ terraform {
       name = "groundwork-azure"
     }
   }
-
-  # Local backend (disabled - using Terraform Cloud)
-  # backend "local" {
-  #   path = "terraform.tfstate"
-  # }
 }
 
 provider "azurerm" {
@@ -46,21 +33,3 @@ provider "azurerm" {
   client_secret   = var.azure_client_secret
   tenant_id       = var.azure_tenant_id
 }
-
-# COMMENTED OUT - Will enable after database is created
-# provider "kubernetes" {
-#   host                   = azurerm_kubernetes_cluster.aks.kube_config.0.host
-#   client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate)
-#   client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key)
-#   cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate)
-# }
-
-# provider "helm" {
-#   kubernetes {
-#     host                   = azurerm_kubernetes_cluster.aks.kube_config.0.host
-#     client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate)
-#     client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key)
-#     cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate)
-#   }
-# }
-

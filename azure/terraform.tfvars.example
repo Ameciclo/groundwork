@@ -16,18 +16,8 @@ resource_group_name = "ameciclo-rg"
 # Virtual Network
 vnet_name           = "ameciclo-vnet"
 vnet_address_space  = ["10.10.0.0/16"]
-aks_subnet_name     = "aks-subnet"
-aks_subnet_prefix   = ["10.10.1.0/24"]
 database_subnet_name = "database-subnet"
 database_subnet_prefix = ["10.10.2.0/24"]
-
-# AKS Cluster
-aks_cluster_name = "ameciclo-aks"
-kubernetes_version = "1.32"
-node_count       = 2
-vm_size          = "Standard_B2s"
-max_node_count   = 5
-min_node_count   = 2
 
 # PostgreSQL Database
 postgresql_server_name = "ameciclo-postgres"
@@ -35,7 +25,21 @@ postgresql_version     = "16"
 postgresql_sku_name    = "B_Standard_B1ms"
 postgresql_storage_mb  = 32768
 postgresql_admin_username = "psqladmin"
-postgresql_admin_password = "YourSecurePassword123!"
+# postgresql_admin_password = Set via TF_VAR_postgresql_admin_password environment variable
+
+# Virtual Machine (K3s Host)
+vm_name              = "ameciclo-vm"
+vm_size              = "Standard_B2as_v2"
+vm_subnet_name       = "vm-subnet"
+vm_subnet_prefix     = ["10.10.3.0/24"]
+admin_username       = "azureuser"
+# admin_ssh_public_key = Set via TF_VAR_admin_ssh_public_key environment variable
+
+# K3s Configuration
+k3s_enabled  = true
+k3s_version  = "v1.32.4+k3s1"
+k3s_vm_size  = "Standard_B2as_v2"
+azure_region = "westus3"
 
 # Storage Account
 # Note: Must be globally unique and lowercase (3-24 characters)

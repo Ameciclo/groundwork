@@ -152,17 +152,14 @@
     # ========== Tailscale Operator Installation ==========
     - name: Install Tailscale Operator via Helm (using --install)
       shell: |
-        export KUBECONFIG={{ kubeconfig_path }}
-        /usr/local/bin/helm upgrade \
+        bash -c 'export KUBECONFIG={{ kubeconfig_path }} && /usr/local/bin/helm upgrade \
           --install \
           tailscale-operator \
           tailscale/tailscale-operator \
           --namespace={{ tailscale_namespace }} \
           --create-namespace \
           --set-string oauth.clientId="{{ tailscale_client_id }}" \
-          --set-string oauth.clientSecret="{{ tailscale_client_secret }}"
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
+          --set-string oauth.clientSecret="{{ tailscale_client_secret }}"'
       register: tailscale_install
       retries: 2
       delay: 30
@@ -206,16 +203,18 @@
 
     - name: Install ArgoCD via Helm (without wait)
       shell: |
-        export KUBECONFIG={{ kubeconfig_path }}
-        /usr/local/bin/helm install argocd argo/argo-cd \
+        bash -c 'export KUBECONFIG={{ kubeconfig_path }} && /usr/local/bin/helm upgrade \
+          --install \
+          argocd \
+          argo/argo-cd \
           -n {{ argocd_namespace }} \
-          --version {{ argocd_version }}
+          --create-namespace \
+          --version {{ argocd_version }}'
       register: argocd_install
       retries: 2
       delay: 30
-      until: argocd_install.rc == 0 or 'cannot re-use a name' in argocd_install.stderr
-      changed_when: "'deployed' in argocd_install.stdout or 'installed' in argocd_install.stdout"
-      failed_when: argocd_install.rc != 0 and 'cannot re-use a name' not in argocd_install.stderr
+      until: argocd_install.rc == 0
+      changed_when: "'deployed' in argocd_install.stdout or 'installed' in argocd_install.stdout or 'upgraded' in argocd_install.stdout"
 
     - name: Wait for ArgoCD to be ready (with longer timeout)
       shell: |

@@ -63,23 +63,6 @@ resource "azurerm_linux_virtual_machine" "vm" {
   ]
 }
 
-# Custom Script Extension to install Docker and Docker Compose
-resource "azurerm_virtual_machine_extension" "docker_install" {
-  name                       = "docker-install"
-  virtual_machine_id         = azurerm_linux_virtual_machine.vm.id
-  publisher                  = "Microsoft.Azure.Extensions"
-  type                       = "CustomScript"
-  type_handler_version       = "2.1"
-  auto_upgrade_minor_version = true
-
-  settings = jsonencode({
-    script = base64encode(file("${path.module}/scripts/install-docker.sh"))
-  })
-
-  tags = var.tags
-
-  depends_on = [
-    azurerm_linux_virtual_machine.vm,
-  ]
-}
+# Note: K3s installation is handled via Ansible playbook (ansible/k3s-azure-playbook.yml)
+# No custom script extension needed as K3s uses containerd, not Docker
 

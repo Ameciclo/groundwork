@@ -1,5 +1,10 @@
 # ArgoCD Helm Chart Values
 # GitOps Continuous Deployment for Kubernetes
+#
+# IMPORTANT: This chart requires Tailscale Operator to be deployed first.
+# The ingress uses ingressClassName: "tailscale" to expose ArgoCD via Tailscale VPN.
+# Deploy Tailscale operator before deploying this chart:
+#   helm install tailscale helm/charts/tailscale -n tailscale --create-namespace
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
@@ -58,21 +63,16 @@ service:
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
-  enabled: false
-  className: ""
+  enabled: true
+  className: "tailscale"
   annotations:
-    {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+    tailscale.com/expose: "true"
   hosts:
-    - host: chart-example.local
+    - host: argocd
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 # -- Expose the service via gateway-api HTTPRoute
 # Requires Gateway API resources and suitable controller installed within the cluster
@@ -225,11 +225,12 @@ argocd:
 
     # Ingress
     ingress:
-      enabled: false
-      className: ""
-      annotations: {}
+      enabled: true
+      className: "tailscale"
+      annotations:
+        tailscale.com/expose: "true"
       hosts:
-        - host: argocd.example.com
+        - host: argocd
           paths:
             - path: /
               pathType: Prefix

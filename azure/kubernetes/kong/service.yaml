@@ -10,7 +10,7 @@ metadata:
 spec:
   type: LoadBalancer
   externalIPs:
-    - 177.121.124.29
+    - 4.236.123.221
   selector:
     app: kong
   ports:

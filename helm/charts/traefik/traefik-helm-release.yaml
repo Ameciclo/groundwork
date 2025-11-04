@@ -1,0 +1,45 @@
+# Traefik Helm Release
+# Deploys Traefik using the official Helm chart
+# This replaces K3s's built-in Traefik with a managed version
+
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  repo: https://traefik.github.io/charts
+  chart: traefik
+  version: 34.2.1
+  targetNamespace: kube-system
+  set:
+    # Global settings
+    global.checkNewVersion: "false"
+    global.sendAnonymousUsage: "false"
+    
+    # Service configuration
+    service.type: ClusterIP
+    
+    # Dashboard and API
+    ingressClass.enabled: "true"
+    ingressClass.isDefaultClass: "true"
+    
+    # Entry points
+    ports.web.port: 8000
+    ports.websecure.port: 8443
+    ports.traefik.port: 8080
+    ports.metrics.port: 9100
+    
+    # Providers
+    providers.kubernetescrd.enabled: "true"
+    providers.kubernetesingress.enabled: "true"
+    
+    # Metrics
+    metrics.prometheus.enabled: "true"
+    metrics.prometheus.entryPoint: metrics
+    
+    # Logging
+    logs.general.level: INFO
+    logs.general.format: json
+    logs.access.enabled: "true"
+    logs.access.format: json

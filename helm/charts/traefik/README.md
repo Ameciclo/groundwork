@@ -1,27 +1,29 @@
 # Traefik Configuration for K3s
 
-This directory contains Kubernetes manifests for configuring the native Traefik ingress controller that comes with K3s, managed by ArgoCD.
+This directory contains Kubernetes manifests for deploying Traefik as the ingress controller on K3s, managed by ArgoCD.
 
 ## Overview
 
-K3s comes with Traefik pre-installed by default. This configuration:
-- Configures the native Traefik instance via ConfigMap
+This configuration deploys Traefik using the official Helm chart via K3s's HelmChart system:
+- Deploys Traefik using the official Helm chart (v34.2.1)
 - Exposes the Traefik dashboard through Tailscale Ingress
 - Enables Prometheus metrics
 - Supports both Kubernetes CRDs and standard Ingress resources
+- Managed entirely through GitOps via ArgoCD
 
 ## Files
 
 ### `kustomization.yaml`
 Kustomize configuration that bundles all Traefik manifests for ArgoCD deployment.
 
-### `traefik-config.yaml`
-ConfigMap that configures the native Traefik instance with:
+### `traefik-helm-release.yaml`
+K3s HelmChart resource that deploys Traefik from the official Helm repository with:
 - **Entry Points**: web (8000), websecure (8443), traefik (8080), metrics (9100)
 - **API & Dashboard**: Enabled on port 8080
 - **Providers**: Kubernetes CRDs and standard Ingress resources
 - **Metrics**: Prometheus metrics on port 9100
 - **Logging**: JSON format for structured logging
+- **Service Type**: ClusterIP (exposed via Tailscale Ingress)
 
 ### `traefik-dashboard-ingress.yaml`
 Tailscale Ingress that exposes the Traefik dashboard through your Tailscale network.

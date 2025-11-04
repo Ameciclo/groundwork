@@ -28,6 +28,7 @@ spec:
     ports.web.port: 8000
     ports.websecure.port: 8443
     ports.traefik.port: 8080
+    ports.traefik.expose.default: "true"
     ports.metrics.port: 9100
 
     # Providers (camelCase for v37+)

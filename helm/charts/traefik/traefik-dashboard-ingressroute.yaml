@@ -11,6 +11,22 @@ spec:
   entryPoints:
     - traefik
   routes:
+    # Redirect root to /dashboard/
+    - match: Path(`/`)
+      kind: Rule
+      services:
+        - name: noop@internal
+          kind: TraefikService
+      middlewares:
+        - name: redirect-root-to-dashboard
+    # Redirect /dashboard to /dashboard/
+    - match: Path(`/dashboard`)
+      kind: Rule
+      services:
+        - name: noop@internal
+          kind: TraefikService
+      middlewares:
+        - name: redirect-dashboard-to-dashboard-slash
     # Dashboard UI
     - match: PathPrefix(`/dashboard`)
       kind: Rule
@@ -23,3 +39,27 @@ spec:
       services:
         - name: api@internal
           kind: TraefikService
+---
+# Middleware to redirect / to /dashboard/
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-root-to-dashboard
+  namespace: kube-system
+spec:
+  redirectRegex:
+    regex: ^https?://([^/]+)/?$
+    replacement: https://${1}/dashboard/
+    permanent: true
+---
+# Middleware to redirect /dashboard to /dashboard/
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-dashboard-to-dashboard-slash
+  namespace: kube-system
+spec:
+  redirectRegex:
+    regex: ^https?://([^/]+)/dashboard/?$
+    replacement: https://${1}/dashboard/
+    permanent: true

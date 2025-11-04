@@ -1,0 +1,22 @@
+# ArgoCD Application for Kong
+# Manages Kong deployment via GitOps
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kong
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork
+    targetRevision: main
+    path: azure/kubernetes/kong
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kong
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

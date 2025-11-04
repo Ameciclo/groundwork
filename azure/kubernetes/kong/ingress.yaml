@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-manager
+  namespace: kong
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: kong-manager
+      port:
+        number: 8002
+  tls:
+    - hosts:
+        - kong-manager
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin
+  namespace: kong
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: kong-admin
+      port:
+        number: 8001
+  tls:
+    - hosts:
+        - kong-admin

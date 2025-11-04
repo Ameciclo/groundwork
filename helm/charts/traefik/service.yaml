@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: traefik
+spec:
+  type: NodePort
+  ports:
+    - name: web
+      port: 80
+      targetPort: 8000
+      nodePort: 32746
+      protocol: TCP
+    - name: websecure
+      port: 443
+      targetPort: 8443
+      nodePort: 30629
+      protocol: TCP
+    - name: dashboard
+      port: 8080
+      targetPort: 8080
+      nodePort: 30813
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: traefik
+

@@ -8,8 +8,9 @@ resources:
   - dashboard-ingressroute.yaml
   - tailscale-ingress.yaml
 
-# Note: tailscale-ingress.yaml exposes the Traefik web interface via Tailscale at https://traefik
-# It includes both the Ingress resource and a ClusterIP service for the backend
+# Note: tailscale-ingress.yaml exposes the Traefik web interface via Tailscale
+# It uses a LoadBalancer service with tailscale loadBalancerClass
+# Accessible at http://traefik.armadillo-hamal.ts.net/
 
 commonLabels:
   app.kubernetes.io/name: traefik

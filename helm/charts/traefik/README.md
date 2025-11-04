@@ -9,9 +9,9 @@ This directory contains Kubernetes manifests for Traefik ingress controller conf
   - HTTPS: Port 30629 (maps to 8443)
   - Dashboard: Port 30813 (maps to 8080)
 
-- **dashboard-ingressroute.yaml** - Tailscale Ingress to expose the Traefik dashboard
-  - Accessible at `https://traefik.armadillo-hamal.ts.net/` via Tailscale
-  - Uses Tailscale ingress controller with TLS
+- **tailscale-ingress.yaml** - Tailscale Ingress to expose the Traefik web interface
+  - Accessible at `https://traefik-1.armadillo-hamal.ts.net/` via Tailscale
+  - Uses Tailscale ingress controller with TLS and Let's Encrypt certificates
 
 - **kustomization.yaml** - Kustomize configuration for ArgoCD deployment
 
@@ -27,12 +27,13 @@ ArgoCD automatically syncs these manifests to the cluster.
 
 ### Via Tailscale Ingress (Recommended)
 
-Access: `https://traefik-1.armadillo-hamal.ts.net/`
+Access: `https://traefik.armadillo-hamal.ts.net/dashboard/`
 
 The Tailscale ingress controller automatically:
 - Exposes the service on your Tailscale network
-- Provides TLS encryption with Let's Encrypt
-- Routes traffic to the Traefik dashboard
+- Provides TLS encryption with Let's Encrypt certificates
+- Routes traffic to the Traefik web interface
+- Note: The `-1` suffix is added by Tailscale when using hostname `traefik`
 
 ### Via Traefik IngressRoute (Alternative)
 

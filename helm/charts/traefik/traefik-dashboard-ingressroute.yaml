@@ -11,31 +11,35 @@ spec:
   entryPoints:
     - traefik
   routes:
-    # Redirect root to /dashboard/
+    # Redirect root to /dashboard/ (exact match, highest priority)
     - match: Path(`/`)
       kind: Rule
+      priority: 1000
       services:
         - name: noop@internal
           kind: TraefikService
       middlewares:
         - name: redirect-root-to-dashboard
-    # Redirect /dashboard to /dashboard/
+    # Redirect /dashboard to /dashboard/ (exact match, high priority)
     - match: Path(`/dashboard`)
       kind: Rule
+      priority: 999
       services:
         - name: noop@internal
           kind: TraefikService
       middlewares:
         - name: redirect-dashboard-to-dashboard-slash
-    # Dashboard UI
+    # Dashboard UI (prefix match, lower priority)
     - match: PathPrefix(`/dashboard`)
       kind: Rule
+      priority: 100
       services:
         - name: api@internal
           kind: TraefikService
-    # API endpoints
+    # API endpoints (prefix match, lower priority)
     - match: PathPrefix(`/api`)
       kind: Rule
+      priority: 100
       services:
         - name: api@internal
           kind: TraefikService

@@ -17,6 +17,14 @@ spec:
     - host: traefik
       http:
         paths:
+          # Health check endpoint
+          - path: /ping
+            pathType: Prefix
+            backend:
+              service:
+                name: traefik
+                port:
+                  name: traefik
           # Dashboard (note: Traefik dashboard is at /dashboard/ with trailing slash)
           - path: /dashboard/
             pathType: Prefix

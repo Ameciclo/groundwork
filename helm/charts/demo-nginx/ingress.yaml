@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: demo.example.com
+    - host: azure.teste.ameciclo.org
       http:
         paths:
           - path: /
@@ -20,6 +20,5 @@ spec:
                   name: http
   tls:
     - hosts:
-        - demo.example.com
+        - azure.teste.ameciclo.org
       secretName: demo-nginx-tls
-

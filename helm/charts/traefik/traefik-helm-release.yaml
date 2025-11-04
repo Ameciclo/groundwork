@@ -36,6 +36,11 @@ spec:
     providers.kubernetesCRD.enabled: "true"
     providers.kubernetesIngress.enabled: "true"
 
+    # ACME / Let's Encrypt Certificate Provider
+    certificatesResolvers.letsencrypt.acme.email: "admin@ameciclo.org"
+    certificatesResolvers.letsencrypt.acme.storage: "/data/acme.json"
+    certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint: "web"
+
     # Metrics
     metrics.prometheus.enabled: "true"
     metrics.prometheus.entryPoint: metrics

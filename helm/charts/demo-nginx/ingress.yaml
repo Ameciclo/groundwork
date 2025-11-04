@@ -8,17 +8,8 @@ spec:
     - web
     - websecure
   routes:
-    # ACME challenge route (highest priority)
-    - match: Host(`azure.teste.ameciclo.org`) && PathPrefix(`/.well-known/acme-challenge`)
-      kind: Rule
-      priority: 1000
-      services:
-        - name: noop@internal
-          kind: TraefikService
-    # Main application route
     - match: Host(`azure.teste.ameciclo.org`)
       kind: Rule
-      priority: 100
       services:
         - name: demo-nginx
           port: 80

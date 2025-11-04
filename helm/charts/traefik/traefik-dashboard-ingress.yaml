@@ -23,7 +23,7 @@ spec:
               service:
                 name: traefik
                 port:
-                  number: 8080
+                  name: traefik
   tls:
     - hosts:
         - traefik

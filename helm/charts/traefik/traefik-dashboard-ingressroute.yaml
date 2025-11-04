@@ -11,9 +11,15 @@ spec:
   entryPoints:
     - traefik
   routes:
-    - match: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
+    # Dashboard UI
+    - match: PathPrefix(`/dashboard`)
       kind: Rule
       services:
         - name: api@internal
           kind: TraefikService
-
+    # API endpoints
+    - match: PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService

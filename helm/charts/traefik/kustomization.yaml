@@ -5,6 +5,7 @@ namespace: kube-system
 
 resources:
   - traefik-helm-release.yaml
+  - traefik-dashboard-ingressroute.yaml
   - traefik-dashboard-ingress.yaml
 
 commonLabels:

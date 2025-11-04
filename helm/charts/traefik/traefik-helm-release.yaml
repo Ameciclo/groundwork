@@ -21,6 +21,7 @@ spec:
     service.type: ClusterIP
 
     # Dashboard and API
+    api.dashboard: "true"
     ingressClass.enabled: "true"
     ingressClass.isDefaultClass: "true"
 

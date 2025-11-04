@@ -18,7 +18,7 @@ spec:
     global.sendAnonymousUsage: "false"
 
     # Service configuration
-    service.type: ClusterIP
+    service.type: LoadBalancer
 
     # Dashboard and API
     api.dashboard: "true"

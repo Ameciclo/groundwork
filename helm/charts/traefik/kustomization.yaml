@@ -6,9 +6,10 @@ namespace: kube-system
 resources:
   - service.yaml
   - dashboard-ingressroute.yaml
+  - tailscale-ingress.yaml
 
-# Note: dashboard-ingressroute.yaml is now a Tailscale Ingress
-# It exposes the Traefik dashboard via Tailscale at https://traefik
+# Note: tailscale-ingress.yaml exposes the Traefik web interface via Tailscale at https://traefik
+# It includes both the Ingress resource and a ClusterIP service for the backend
 
 commonLabels:
   app.kubernetes.io/name: traefik

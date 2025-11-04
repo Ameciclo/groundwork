@@ -25,16 +25,22 @@ ArgoCD automatically syncs these manifests to the cluster.
 
 ## Accessing the Dashboard
 
-### Via Tailscale (Recommended)
+### Via Tailscale Ingress (Recommended)
 
-Simply access: `https://traefik.armadillo-hamal.ts.net/`
+Access: `https://traefik-1.armadillo-hamal.ts.net/`
 
 The Tailscale ingress controller automatically:
 - Exposes the service on your Tailscale network
-- Provides TLS encryption
+- Provides TLS encryption with Let's Encrypt
 - Routes traffic to the Traefik dashboard
 
-No additional configuration needed!
+### Via Traefik IngressRoute (Alternative)
+
+The dashboard is also exposed via Traefik's IngressRoute at:
+- HTTP: `http://10.10.1.4:32746/` (through Tailscale subnet)
+- HTTPS: `https://10.10.1.4:30629/` (through Tailscale subnet)
+
+Use the Host header: `Host: traefik.armadillo-hamal.ts.net`
 
 ## Entry Points
 

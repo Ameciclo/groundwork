@@ -4,13 +4,8 @@ kind: Kustomization
 namespace: kube-system
 
 resources:
-  - service.yaml
-  - dashboard-ingressroute.yaml
-  - tailscale-ingress.yaml
-
-# Note: tailscale-ingress.yaml exposes the Traefik web interface via Tailscale
-# It uses a LoadBalancer service with tailscale loadBalancerClass
-# Accessible at http://traefik.armadillo-hamal.ts.net/
+  - traefik-config.yaml
+  - traefik-dashboard-ingress.yaml
 
 commonLabels:
   app.kubernetes.io/name: traefik

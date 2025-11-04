@@ -1,74 +1,170 @@
-# Traefik Configuration
+# Traefik Configuration for K3s
 
-This directory contains Kubernetes manifests for Traefik ingress controller configuration on the k3s cluster, managed by ArgoCD.
+This directory contains Kubernetes manifests for configuring the native Traefik ingress controller that comes with K3s, managed by ArgoCD.
+
+## Overview
+
+K3s comes with Traefik pre-installed by default. This configuration:
+- Configures the native Traefik instance via ConfigMap
+- Exposes the Traefik dashboard through Tailscale Ingress
+- Enables Prometheus metrics
+- Supports both Kubernetes CRDs and standard Ingress resources
 
 ## Files
 
-- **service.yaml** - NodePort service to expose Traefik externally
-  - HTTP: Port 32746 (maps to 8000)
-  - HTTPS: Port 30629 (maps to 8443)
-  - Dashboard: Port 30813 (maps to 8080)
+### `kustomization.yaml`
+Kustomize configuration that bundles all Traefik manifests for ArgoCD deployment.
 
-- **tailscale-ingress.yaml** - Tailscale Ingress to expose the Traefik web interface
-  - Accessible at `https://traefik-1.armadillo-hamal.ts.net/` via Tailscale
-  - Uses Tailscale ingress controller with TLS and Let's Encrypt certificates
+### `traefik-config.yaml`
+ConfigMap that configures the native Traefik instance with:
+- **Entry Points**: web (8000), websecure (8443), traefik (8080), metrics (9100)
+- **API & Dashboard**: Enabled on port 8080
+- **Providers**: Kubernetes CRDs and standard Ingress resources
+- **Metrics**: Prometheus metrics on port 9100
+- **Logging**: JSON format for structured logging
 
-- **kustomization.yaml** - Kustomize configuration for ArgoCD deployment
-
-- **values.yaml** - Helm values for Traefik configuration
-
-## Deployment
-
-This is deployed through ArgoCD via the Application manifest at `helm/environments/prod/traefik-app.yaml`.
-
-ArgoCD automatically syncs these manifests to the cluster.
+### `traefik-dashboard-ingress.yaml`
+Tailscale Ingress that exposes the Traefik dashboard through your Tailscale network.
 
 ## Accessing the Dashboard
 
-### Via Tailscale Ingress (Recommended)
+### Via Tailscale (Recommended)
 
-Access: `https://traefik.armadillo-hamal.ts.net/dashboard/`
+The dashboard is accessible at:
+```
+https://traefik.armadillo-hamal.ts.net
+```
 
-The Tailscale ingress controller automatically:
-- Exposes the service on your Tailscale network
-- Provides TLS encryption with Let's Encrypt certificates
-- Routes traffic to the Traefik web interface
-- Note: The `-1` suffix is added by Tailscale when using hostname `traefik`
+This uses the Tailscale Ingress controller to expose the dashboard securely through your Tailscale network.
 
-### Via Traefik IngressRoute (Alternative)
+**Requirements:**
+- Tailscale Operator must be installed on the cluster
+- Your machine must be connected to the same Tailscale network
+- Run: `sudo tailscale up --accept-routes` to accept cluster routes
 
-The dashboard is also exposed via Traefik's IngressRoute at:
-- HTTP: `http://10.10.1.4:32746/` (through Tailscale subnet)
-- HTTPS: `https://10.10.1.4:30629/` (through Tailscale subnet)
+### Via Direct IP (Alternative)
 
-Use the Host header: `Host: traefik.armadillo-hamal.ts.net`
+If you need direct access through the cluster IP:
+```
+http://10.10.1.4:8080
+```
 
 ## Entry Points
 
-- **web** (HTTP): Port 8000 → NodePort 32746
-- **websecure** (HTTPS): Port 8443 → NodePort 30629
-- **traefik** (Dashboard): Port 8080 → NodePort 30813
-- **metrics** (Prometheus): Port 9100
+| Name | Port | Purpose |
+|------|------|---------|
+| web | 8000 | HTTP traffic |
+| websecure | 8443 | HTTPS traffic |
+| traefik | 8080 | Dashboard and API |
+| metrics | 9100 | Prometheus metrics |
 
-## Architecture
+## Deployment
 
+This configuration is deployed through ArgoCD via the Application manifest at:
 ```
-Tailscale Network
-    ↓
-Tailscale Ingress Controller
-    ↓
-traefik-dashboard Ingress (ingressClassName: tailscale)
-    ↓
-traefik Service (kube-system)
-    ↓
-Traefik Pod (Dashboard on port 8080)
+helm/environments/prod/traefik-app.yaml
 ```
 
-## Notes
+ArgoCD automatically syncs these manifests to the cluster.
 
-- Traefik is installed via k3s HelmChart system
-- Dashboard is exposed via Tailscale Ingress (not Traefik IngressRoute)
-- TLS is automatically managed by Tailscale ingress controller
-- Prometheus metrics are available on port 9100
-- All configuration is managed by ArgoCD for GitOps workflow
+## Configuration
 
+### Modifying Traefik Settings
+
+To modify Traefik configuration:
+
+1. Edit `traefik-config.yaml` ConfigMap
+2. Commit and push to the repository
+3. ArgoCD will automatically sync the changes
+4. Traefik will reload the configuration
+
+### Adding Routes
+
+You can expose services through Traefik using:
+
+**Standard Kubernetes Ingress:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-service
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: my-service.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 80
+```
+
+**Traefik CRD (IngressRoute):**
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: my-service
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`my-service.example.com`)
+      kind: Rule
+      services:
+        - name: my-service
+          port: 80
+```
+
+## Metrics
+
+Prometheus metrics are available on port 9100. You can scrape metrics from:
+```
+http://traefik:9100/metrics
+```
+
+## Troubleshooting
+
+### Dashboard not accessible via Tailscale
+
+1. Verify Tailscale Operator is running:
+   ```bash
+   kubectl get pods -n tailscale
+   ```
+
+2. Check Ingress status:
+   ```bash
+   kubectl get ingress -n kube-system traefik-dashboard
+   ```
+
+3. Check Traefik pod logs:
+   ```bash
+   kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
+   ```
+
+### Traefik not routing traffic
+
+1. Verify Traefik is running:
+   ```bash
+   kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik
+   ```
+
+2. Check Ingress resources:
+   ```bash
+   kubectl get ingress -A
+   ```
+
+3. Check Traefik logs:
+   ```bash
+   kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -f
+   ```
+
+## References
+
+- [K3s Traefik Documentation](https://docs.k3s.io/networking/traefik)
+- [Traefik Documentation](https://doc.traefik.io/)
+- [Tailscale Kubernetes Ingress](https://tailscale.com/kb/1439/kubernetes-operator-cluster-ingress)

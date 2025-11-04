@@ -1,13 +1,20 @@
+# Traefik Dashboard Ingress via Tailscale
+# Exposes the Traefik dashboard through Tailscale network
+# Following: https://tailscale.com/kb/1439/kubernetes-operator-cluster-ingress
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: traefik-dashboard
   namespace: kube-system
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # Tailscale Ingress annotations
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: traefik
 spec:
+  ingressClassName: tailscale
   rules:
-    - host: traefik.local
+    - host: traefik
       http:
         paths:
           - path: /
@@ -17,4 +24,7 @@ spec:
                 name: traefik
                 port:
                   number: 8080
-
+  tls:
+    - hosts:
+        - traefik
+      secretName: traefik-tls

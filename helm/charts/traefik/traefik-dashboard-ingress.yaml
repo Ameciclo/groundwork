@@ -17,7 +17,16 @@ spec:
     - host: traefik
       http:
         paths:
-          - path: /
+          # Dashboard (note: Traefik dashboard is at /dashboard/ with trailing slash)
+          - path: /dashboard/
+            pathType: Prefix
+            backend:
+              service:
+                name: traefik
+                port:
+                  name: traefik
+          # API endpoints
+          - path: /api/
             pathType: Prefix
             backend:
               service:

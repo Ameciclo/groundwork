@@ -30,9 +30,9 @@ spec:
     ports.traefik.port: 8080
     ports.metrics.port: 9100
 
-    # Providers
-    providers.kubernetescrd.enabled: "true"
-    providers.kubernetesingress.enabled: "true"
+    # Providers (camelCase for v37+)
+    providers.kubernetesCRD.enabled: "true"
+    providers.kubernetesIngress.enabled: "true"
 
     # Metrics
     metrics.prometheus.enabled: "true"

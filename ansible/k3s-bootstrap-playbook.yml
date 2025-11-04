@@ -81,11 +81,11 @@
       register: private_ip
       changed_when: false
 
-    - name: Install K3s with disabled components and private IP in cert
+    - name: Install K3s with Traefik enabled and private IP in cert
       shell: |
         curl -sfL https://get.k3s.io | \
         INSTALL_K3S_VERSION="{{ k3s_version }}" \
-        INSTALL_K3S_EXEC="--disable=traefik --tls-san={{ private_ip.stdout }}" \
+        INSTALL_K3S_EXEC="--tls-san={{ private_ip.stdout }}" \
         sh -
       args:
         creates: /usr/local/bin/k3s

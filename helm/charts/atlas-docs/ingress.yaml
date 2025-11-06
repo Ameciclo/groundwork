@@ -17,7 +17,6 @@ spec:
   tls:
     - hosts:
         - docs.atlas.az.ameciclo.org
-      secretName: atlas-docs-tls
   rules:
     - host: docs.atlas.az.ameciclo.org
       http:

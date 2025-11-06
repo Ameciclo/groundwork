@@ -46,6 +46,8 @@ spec:
               value: "true"
             - name: DATABASE_SSL_REJECT_UNAUTHORIZED
               value: "false"
+            - name: DATABASE_SSL_CA
+              value: "/etc/ssl/certs/ca-certificates.crt"
             - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:

@@ -7,8 +7,17 @@ metadata:
     app.kubernetes.io/name: atlas-docs
     app.kubernetes.io/part-of: atlas
     app.kubernetes.io/component: documentation
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - docs.atlas.az.ameciclo.org
+      secretName: atlas-docs-tls
   rules:
     - host: docs.atlas.az.ameciclo.org
       http:

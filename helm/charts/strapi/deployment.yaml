@@ -27,6 +27,10 @@ spec:
             - name: http
               containerPort: 1337
               protocol: TCP
+          volumeMounts:
+            - name: env-config
+              mountPath: /opt/app/.env
+              subPath: .env
           env:
             - name: NODE_ENV
               value: "production"
@@ -121,4 +125,7 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-
+      volumes:
+        - name: env-config
+          configMap:
+            name: strapi-config

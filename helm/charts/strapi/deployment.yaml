@@ -33,7 +33,10 @@ spec:
             - name: DATABASE_CLIENT
               value: "postgres"
             - name: DATABASE_URL
-              value: "postgresql://psqladmin:YourSecurePassword123!@ameciclo-postgres.postgres.database.azure.com:5432/strapi?sslmode=require"
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: database-url
             - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -62,19 +65,28 @@ spec:
             - name: DO_SPACE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
+                  name: strapi-storage
                   key: do-space-key
             - name: DO_SPACE_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
+                  name: strapi-storage
                   key: do-space-secret
             - name: DO_SPACE_REGION
-              value: "nyc3"
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-storage
+                  key: do-space-region
             - name: DO_SPACE_ENDPOINT
-              value: "https://nyc3.digitaloceanspaces.com"
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-storage
+                  key: do-space-endpoint
             - name: DO_SPACE_BUCKET
-              value: "ameciclo-space"
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-storage
+                  key: do-space-bucket
           livenessProbe:
             httpGet:
               path: /

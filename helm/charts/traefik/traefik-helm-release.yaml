@@ -40,7 +40,6 @@ spec:
     certificatesResolvers.letsencrypt.acme.email: "admin@ameciclo.org"
     certificatesResolvers.letsencrypt.acme.storage: "/data/acme.json"
     certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint: "web"
-    certificatesResolvers.letsencrypt.acme.httpChallenge.trustedIPs: "0.0.0.0/0"
 
     # Metrics
     metrics.prometheus.enabled: "true"

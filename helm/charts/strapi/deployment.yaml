@@ -27,40 +27,25 @@ spec:
             - name: http
               containerPort: 1337
               protocol: TCP
-          volumeMounts:
-            - name: env-config
-              mountPath: /opt/app/.env
-              subPath: .env
           env:
             - name: NODE_ENV
               value: "production"
             - name: DATABASE_CLIENT
               value: "postgres"
             - name: DATABASE_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-db
-                  key: host
+              value: "ameciclo-postgres.postgres.database.azure.com"
             - name: DATABASE_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-db
-                  key: port
+              value: "5432"
             - name: DATABASE_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-db
-                  key: database
+              value: "strapi"
             - name: DATABASE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-db
-                  key: username
+              value: "psqladmin"
             - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-db
-                  key: password
+              value: "YourSecurePassword123!"
+            - name: DATABASE_SSL
+              value: "true"
+            - name: DATABASE_SSL_REJECT_UNAUTHORIZED
+              value: "false"
             - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -125,7 +110,4 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-      volumes:
-        - name: env-config
-          configMap:
-            name: strapi-config
+

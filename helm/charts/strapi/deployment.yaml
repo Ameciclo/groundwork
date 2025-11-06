@@ -32,22 +32,8 @@ spec:
               value: "production"
             - name: DATABASE_CLIENT
               value: "postgres"
-            - name: DATABASE_HOST
-              value: "ameciclo-postgres.postgres.database.azure.com"
-            - name: DATABASE_PORT
-              value: "5432"
-            - name: DATABASE_NAME
-              value: "strapi"
-            - name: DATABASE_USERNAME
-              value: "psqladmin"
-            - name: DATABASE_PASSWORD
-              value: "YourSecurePassword123!"
-            - name: DATABASE_SSL
-              value: "true"
-            - name: DATABASE_SSL_REJECT_UNAUTHORIZED
-              value: "false"
-            - name: DATABASE_SSL_CA
-              value: "/etc/ssl/certs/ca-certificates.crt"
+            - name: DATABASE_URL
+              value: "postgresql://psqladmin:YourSecurePassword123!@ameciclo-postgres.postgres.database.azure.com:5432/strapi?sslmode=require"
             - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: strapi
+  namespace: strapi
+  labels:
+    app.kubernetes.io/name: strapi
+    app.kubernetes.io/part-of: strapi
+    app.kubernetes.io/component: cms
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: strapi
+

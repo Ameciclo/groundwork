@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: strapi
+  labels:
+    name: strapi
+    app.kubernetes.io/name: strapi
+    app.kubernetes.io/part-of: strapi
+

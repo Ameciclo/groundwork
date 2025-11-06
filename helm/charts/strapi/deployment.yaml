@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strapi
+  namespace: strapi
+  labels:
+    app.kubernetes.io/name: strapi
+    app.kubernetes.io/part-of: strapi
+    app.kubernetes.io/component: cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: strapi
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: strapi
+        app.kubernetes.io/part-of: strapi
+        app.kubernetes.io/component: cms
+    spec:
+      containers:
+        - name: strapi
+          image: ghcr.io/ameciclo/strapi:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 1337
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_CLIENT
+              value: "postgres"
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: host
+            - name: DATABASE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: port
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: database
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-db
+                  key: password
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+

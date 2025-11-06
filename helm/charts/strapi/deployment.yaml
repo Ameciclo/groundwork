@@ -30,11 +30,6 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: STRAPI_ADMIN_AUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-secrets
-                  key: admin-jwt-secret
             - name: DATABASE_CLIENT
               value: "postgres"
             - name: DATABASE_HOST
@@ -62,6 +57,47 @@ spec:
                 secretKeyRef:
                   name: strapi-db
                   key: password
+            - name: STRAPI_ADMIN_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: admin-jwt-secret
+            - name: STRAPI_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: jwt-secret
+            - name: STRAPI_APP_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: app-keys
+            - name: STRAPI_API_TOKEN_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: api-token-salt
+            - name: STRAPI_TRANSFER_TOKEN_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: api-token-salt
+            - name: DO_SPACE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: do-space-key
+            - name: DO_SPACE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: strapi-secrets
+                  key: do-space-secret
+            - name: DO_SPACE_REGION
+              value: "nyc3"
+            - name: DO_SPACE_ENDPOINT
+              value: "https://nyc3.digitaloceanspaces.com"
+            - name: DO_SPACE_BUCKET
+              value: "ameciclo-space"
           livenessProbe:
             httpGet:
               path: /

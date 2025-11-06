@@ -15,9 +15,9 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - strapi.atlas.az.ameciclo.org
+        - strapi.az.ameciclo.org
   rules:
-    - host: strapi.atlas.az.ameciclo.org
+    - host: strapi.az.ameciclo.org
       http:
         paths:
           - path: /

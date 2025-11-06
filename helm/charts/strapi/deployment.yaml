@@ -57,27 +57,27 @@ spec:
                 secretKeyRef:
                   name: strapi-db
                   key: password
-            - name: STRAPI_ADMIN_AUTH_SECRET
+            - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets
                   key: admin-jwt-secret
-            - name: STRAPI_JWT_SECRET
+            - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets
                   key: jwt-secret
-            - name: STRAPI_APP_KEYS
+            - name: APP_KEYS
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets
                   key: app-keys
-            - name: STRAPI_API_TOKEN_SALT
+            - name: API_TOKEN_SALT
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets
                   key: api-token-salt
-            - name: STRAPI_TRANSFER_TOKEN_SALT
+            - name: TRANSFER_TOKEN_SALT
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets

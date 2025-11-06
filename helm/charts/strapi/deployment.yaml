@@ -30,7 +30,7 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: ADMIN_JWT_SECRET
+            - name: STRAPI_ADMIN_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: strapi-secrets

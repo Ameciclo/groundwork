@@ -12,6 +12,7 @@ data:
     DATABASE_NAME=strapi
     DATABASE_USERNAME=psqladmin
     DATABASE_PASSWORD=YourSecurePassword123!
+    DATABASE_SSL=true
     ADMIN_JWT_SECRET=***REMOVED***
     JWT_SECRET=***REMOVED***
     APP_KEYS=***REMOVED***

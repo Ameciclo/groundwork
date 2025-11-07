@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: atlas
 
 resources:
+  - migration-job.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml

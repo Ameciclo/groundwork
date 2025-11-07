@@ -37,8 +37,8 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: traffic-deaths-db
-                  key: database-url
+                  name: atlas-infisical-managed
+                  key: DATABASE_URL
           livenessProbe:
             httpGet:
               path: /health

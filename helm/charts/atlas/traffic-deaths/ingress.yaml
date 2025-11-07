@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traffic-deaths
+  namespace: atlas
+  labels:
+    app.kubernetes.io/name: traffic-deaths
+    app.kubernetes.io/part-of: atlas
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: traffic-deaths.az.ameciclo.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: traffic-deaths
+                port:
+                  number: 3003
+  tls:
+    - hosts:
+        - traffic-deaths.az.ameciclo.org
+      secretName: traffic-deaths-tls
+

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: atlas
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: helm/charts/atlas
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: atlas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 10
+

@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: traffic-deaths.az.ameciclo.org
+    - host: obitos.atlas.az.ameciclo.org
       http:
         paths:
           - path: /
@@ -21,6 +21,6 @@ spec:
                   number: 3003
   tls:
     - hosts:
-        - traffic-deaths.az.ameciclo.org
+        - obitos.atlas.az.ameciclo.org
       secretName: traffic-deaths-tls
 

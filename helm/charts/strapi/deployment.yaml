@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: strapi
     app.kubernetes.io/component: cms
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: strapi
@@ -35,58 +35,58 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: strapi-db
-                  key: database-url
+                  name: strapi-infisical-managed
+                  key: DATABASE_URL
             - name: ADMIN_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
-                  key: admin-jwt-secret
+                  name: strapi-infisical-managed
+                  key: ADMIN_JWT_SECRET
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
-                  key: jwt-secret
+                  name: strapi-infisical-managed
+                  key: JWT_SECRET
             - name: APP_KEYS
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
-                  key: app-keys
+                  name: strapi-infisical-managed
+                  key: APP_KEYS
             - name: API_TOKEN_SALT
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
-                  key: api-token-salt
+                  name: strapi-infisical-managed
+                  key: API_TOKEN_SALT
             - name: TRANSFER_TOKEN_SALT
               valueFrom:
                 secretKeyRef:
-                  name: strapi-secrets
-                  key: api-token-salt
+                  name: strapi-infisical-managed
+                  key: TRANSFER_TOKEN_SALT
             - name: DO_SPACE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: strapi-storage
-                  key: do-space-key
+                  name: strapi-infisical-managed
+                  key: DO_SPACE_KEY
             - name: DO_SPACE_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: strapi-storage
-                  key: do-space-secret
+                  name: strapi-infisical-managed
+                  key: DO_SPACE_SECRET
             - name: DO_SPACE_REGION
               valueFrom:
                 secretKeyRef:
-                  name: strapi-storage
-                  key: do-space-region
+                  name: strapi-infisical-managed
+                  key: DO_SPACE_REGION
             - name: DO_SPACE_ENDPOINT
               valueFrom:
                 secretKeyRef:
-                  name: strapi-storage
-                  key: do-space-endpoint
+                  name: strapi-infisical-managed
+                  key: DO_SPACE_ENDPOINT
             - name: DO_SPACE_BUCKET
               valueFrom:
                 secretKeyRef:
-                  name: strapi-storage
-                  key: do-space-bucket
+                  name: strapi-infisical-managed
+                  key: DO_SPACE_BUCKET
           livenessProbe:
             httpGet:
               path: /

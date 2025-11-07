@@ -4,8 +4,8 @@ kind: Kustomization
 namespace: atlas
 
 resources:
-  - traffic-deaths/kustomization.yaml
-  - docs/kustomization.yaml
+  - traffic-deaths
+  - docs
 
 commonLabels:
   app.kubernetes.io/part-of: atlas

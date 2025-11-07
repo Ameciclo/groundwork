@@ -9,6 +9,7 @@ spec:
     repoURL: https://github.com/Ameciclo/groundwork.git
     targetRevision: main
     path: helm/charts/atlas
+    kustomize: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: atlas
@@ -18,5 +19,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - Replace=true
   revisionHistoryLimit: 10
 

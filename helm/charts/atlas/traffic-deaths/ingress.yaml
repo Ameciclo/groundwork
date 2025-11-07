@@ -6,6 +6,9 @@ metadata:
   labels:
     app.kubernetes.io/name: traffic-deaths
     app.kubernetes.io/part-of: atlas
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
   ingressClassName: traefik
   rules:
@@ -19,8 +22,3 @@ spec:
                 name: traffic-deaths
                 port:
                   number: 3003
-  tls:
-    - hosts:
-        - obitos.atlas.az.ameciclo.org
-      secretName: traffic-deaths-tls
-

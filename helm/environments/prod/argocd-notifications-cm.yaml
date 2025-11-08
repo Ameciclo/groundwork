@@ -1,0 +1,192 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-notifications
+    app.kubernetes.io/part-of: argocd
+data:
+  # Telegram service configuration
+  service.telegram: |
+    token: $TELEGRAM_BOT_TOKEN
+    chatID: $TELEGRAM_CHAT_ID
+
+  # Enhanced notification templates
+  template.app-deployed: |
+    message: |
+      🚀 **Deployment Successful** 
+      
+      📦 **Application:** `{{.app.metadata.name}}`
+      🏷️ **Environment:** `{{.app.metadata.namespace}}`
+      ✅ **Status:** {{.app.status.sync.status}}
+      🔄 **Health:** {{.app.status.health.status}}
+      
+      📋 **Sync Details:**
+      • **Operation ID:** `{{.app.status.operationState.operation.sync.syncId}}`
+      • **Revision:** `{{.app.status.sync.revision | substr 0 8}}`
+      • **Started:** {{.app.status.operationState.startedAt}}
+      • **Finished:** {{.app.status.operationState.finishedAt}}
+      
+      🔗 **Repository:** [{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}]({{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}})
+      📁 **Path:** `{{.app.spec.source.path}}`
+      🌿 **Branch:** `{{.app.spec.source.targetRevision}}`
+      
+      {{if .app.status.operationState.syncResult.resources}}
+      📊 **Resources Synced:**
+      {{range .app.status.operationState.syncResult.resources}}
+      • {{.kind}}/{{.name}} - {{.status}}
+      {{end}}
+      {{end}}
+      
+      🎯 **ArgoCD:** [View Application](https://argocd.armadillo-hamal.ts.net/applications/{{.app.metadata.name}})
+
+  template.app-sync-failed: |
+    message: |
+      ❌ **Deployment Failed**
+      
+      📦 **Application:** `{{.app.metadata.name}}`
+      🏷️ **Environment:** `{{.app.metadata.namespace}}`
+      ⚠️ **Status:** {{.app.status.sync.status}}
+      🔴 **Health:** {{.app.status.health.status}}
+      
+      💥 **Error Details:**
+      ```
+      {{.app.status.operationState.message}}
+      ```
+      
+      📋 **Sync Details:**
+      • **Operation ID:** `{{.app.status.operationState.operation.sync.syncId}}`
+      • **Revision:** `{{.app.status.sync.revision | substr 0 8}}`
+      • **Started:** {{.app.status.operationState.startedAt}}
+      • **Failed:** {{.app.status.operationState.finishedAt}}
+      
+      🔗 **Repository:** [{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}]({{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}})
+      📁 **Path:** `{{.app.spec.source.path}}`
+      🌿 **Branch:** `{{.app.spec.source.targetRevision}}`
+      
+      🎯 **ArgoCD:** [View Application](https://argocd.armadillo-hamal.ts.net/applications/{{.app.metadata.name}})
+      
+      🔧 **Next Steps:**
+      • Check application logs
+      • Review resource configurations
+      • Verify dependencies
+
+  template.app-health-degraded: |
+    message: |
+      🟡 **Application Health Degraded**
+      
+      📦 **Application:** `{{.app.metadata.name}}`
+      🏷️ **Environment:** `{{.app.metadata.namespace}}`
+      ⚠️ **Health Status:** {{.app.status.health.status}}
+      🔄 **Sync Status:** {{.app.status.sync.status}}
+      
+      🩺 **Health Details:**
+      {{if .app.status.health.message}}
+      ```
+      {{.app.status.health.message}}
+      ```
+      {{end}}
+      
+      📊 **Resource Status:**
+      {{range .app.status.resources}}
+      {{if ne .health.status "Healthy"}}
+      • {{.kind}}/{{.name}} - {{.health.status}}
+      {{end}}
+      {{end}}
+      
+      🔗 **Repository:** [{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}]({{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}})
+      📁 **Path:** `{{.app.spec.source.path}}`
+      
+      🎯 **ArgoCD:** [View Application](https://argocd.armadillo-hamal.ts.net/applications/{{.app.metadata.name}})
+      
+      🔧 **Action Required:**
+      • Check pod logs and events
+      • Verify resource health
+      • Monitor for recovery
+
+  # Notification triggers
+  trigger.on-deployed: |
+    - description: Application is synced and healthy
+      send:
+      - app-deployed
+      when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+
+  trigger.on-sync-failed: |
+    - description: Application syncing has failed
+      send:
+      - app-sync-failed
+      when: app.status.operationState.phase in ['Error', 'Failed']
+
+  trigger.on-health-degraded: |
+    - description: Application has degraded
+      send:
+      - app-health-degraded
+      when: app.status.health.status == 'Degraded'
+
+  # Additional notification templates
+  template.app-sync-running: |
+    message: |
+      🔄 **Deployment In Progress**
+
+      📦 **Application:** `{{.app.metadata.name}}`
+      🏷️ **Environment:** `{{.app.metadata.namespace}}`
+      ⏳ **Status:** Syncing...
+
+      📋 **Sync Details:**
+      • **Operation ID:** `{{.app.status.operationState.operation.sync.syncId}}`
+      • **Revision:** `{{.app.status.sync.revision | substr 0 8}}`
+      • **Started:** {{.app.status.operationState.startedAt}}
+
+      🔗 **Repository:** [{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}]({{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}})
+      📁 **Path:** `{{.app.spec.source.path}}`
+      🌿 **Branch:** `{{.app.spec.source.targetRevision}}`
+
+      🎯 **ArgoCD:** [View Application](https://argocd.armadillo-hamal.ts.net/applications/{{.app.metadata.name}})
+
+  template.app-sync-status-unknown: |
+    message: |
+      ❓ **Application Status Unknown**
+
+      📦 **Application:** `{{.app.metadata.name}}`
+      🏷️ **Environment:** `{{.app.metadata.namespace}}`
+      ❓ **Status:** {{.app.status.sync.status}}
+      🔍 **Health:** {{.app.status.health.status}}
+
+      📋 **Details:**
+      • **Revision:** `{{.app.status.sync.revision | substr 0 8}}`
+      • **Last Sync:** {{.app.status.operationState.finishedAt}}
+
+      🔗 **Repository:** [{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}]({{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}})
+      📁 **Path:** `{{.app.spec.source.path}}`
+
+      🎯 **ArgoCD:** [View Application](https://argocd.armadillo-hamal.ts.net/applications/{{.app.metadata.name}})
+
+      🔧 **Action Required:**
+      • Check ArgoCD controller logs
+      • Verify cluster connectivity
+      • Review application configuration
+
+  # Additional triggers
+  trigger.on-sync-running: |
+    - description: Application is being synced
+      send:
+      - app-sync-running
+      when: app.status.operationState.phase in ['Running']
+
+  trigger.on-sync-status-unknown: |
+    - description: Application status is unknown
+      send:
+      - app-sync-status-unknown
+      when: app.status.sync.status == 'Unknown'
+
+  # Subscription configuration
+  subscriptions: |
+    - recipients:
+      - telegram
+      triggers:
+      - on-deployed
+      - on-sync-failed
+      - on-health-degraded
+      - on-sync-running
+      - on-sync-status-unknown

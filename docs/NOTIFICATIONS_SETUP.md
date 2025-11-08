@@ -73,23 +73,161 @@ service.telegram: |
   chatID: $telegram-chatid
 ```
 
-### 3. Application Subscriptions
+### 3. Enhanced Notifications ConfigMap
 
-Applications are configured to send notifications:
+The enhanced notifications are configured via the `argocd-notifications-cm` ConfigMap:
+
+```yaml
+# Location: helm/environments/prod/argocd-notifications-cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  service.telegram: |
+    token: $telegram-token
+    chatID: $telegram-chatid
+
+  # Custom templates with emojis and rich formatting
+  template.app-deployed: |
+    message: |
+      🚀 **Deployment Successful**
+      📦 **Application:** `{{.app.metadata.name}}`
+      # ... (see full template in the file)
+```
+
+### 4. Application Subscriptions
+
+Applications are configured to send enhanced notifications:
 
 ```yaml
 metadata:
   annotations:
-    notifications.argoproj.io/subscribe.on-deployed.telegram: "-1001485248506"
-    notifications.argoproj.io/subscribe.on-sync-failed.telegram: "-1001485248506"
-    notifications.argoproj.io/subscribe.on-health-degraded.telegram: "-1001485248506"
+    # Enhanced Telegram notifications
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-running.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-status-unknown.telegram: ""
 ```
 
-## Notification Triggers
+## Enhanced Notification Templates
 
-- **on-deployed**: When application successfully deploys
-- **on-sync-failed**: When sync operation fails
-- **on-health-degraded**: When application health degrades
+The system now includes beautifully formatted Telegram notifications with emojis and detailed information:
+
+### Available Notification Types
+
+- **🚀 on-deployed**: When application successfully deploys
+  - Shows deployment success with green checkmarks
+  - Includes sync details, revision info, and resource status
+  - Links to ArgoCD dashboard and repository
+
+- **❌ on-sync-failed**: When sync operation fails
+  - Shows error details and failure information
+  - Includes troubleshooting suggestions
+  - Links to ArgoCD for investigation
+
+- **🟡 on-health-degraded**: When application health degrades
+  - Shows health status and affected resources
+  - Provides action items for resolution
+  - Monitors for recovery
+
+- **🔄 on-sync-running**: When deployment is in progress
+  - Shows real-time sync status
+  - Includes operation details and timing
+
+- **❓ on-sync-status-unknown**: When application status is unclear
+  - Alerts for connectivity or configuration issues
+  - Provides troubleshooting steps
+
+### Notification Features
+
+✨ **Enhanced Formatting:**
+- Rich text with emojis and formatting
+- Structured information layout
+- Clickable links to ArgoCD and repository
+
+📊 **Detailed Information:**
+- Application name and environment
+- Sync and health status
+- Operation IDs and timestamps
+- Git revision and repository details
+- Resource-level status information
+
+🔗 **Quick Access:**
+- Direct links to ArgoCD dashboard
+- Repository links for code review
+- Formatted for easy mobile reading
+
+## Deployment
+
+### Applying the Enhanced Notifications
+
+1. **Deploy the ConfigMap:**
+   ```bash
+   kubectl apply -f helm/environments/prod/argocd-notifications-cm.yaml
+   ```
+
+2. **Update Application Manifests:**
+   ```bash
+   kubectl apply -f helm/environments/prod/strapi-app.yaml
+   kubectl apply -f helm/environments/prod/atlas-app.yaml
+   kubectl apply -f helm/environments/prod/atlas-docs-app.yaml
+   kubectl apply -f helm/environments/prod/traefik-app.yaml
+   ```
+
+3. **Restart ArgoCD Notifications Controller:**
+   ```bash
+   kubectl rollout restart deployment argocd-notifications-controller -n argocd
+   ```
+
+### Verification
+
+Check that notifications are working:
+
+```bash
+# Check notification controller logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-notifications-controller
+
+# Verify ConfigMap is loaded
+kubectl get configmap argocd-notifications-cm -n argocd -o yaml
+
+# Test with a manual sync
+kubectl patch application strapi -n argocd -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"now"}}}' --type merge
+```
+
+## Customization
+
+### Modifying Templates
+
+To customize notification templates:
+
+1. Edit `helm/environments/prod/argocd-notifications-cm.yaml`
+2. Modify the template content under `template.app-deployed`, etc.
+3. Apply the changes: `kubectl apply -f helm/environments/prod/argocd-notifications-cm.yaml`
+4. Restart the controller: `kubectl rollout restart deployment argocd-notifications-controller -n argocd`
+
+### Template Variables
+
+Available variables in templates:
+- `{{.app.metadata.name}}` - Application name
+- `{{.app.metadata.namespace}}` - Application namespace
+- `{{.app.status.sync.status}}` - Sync status
+- `{{.app.status.health.status}}` - Health status
+- `{{.app.status.sync.revision}}` - Git revision
+- `{{.app.spec.source.repoURL}}` - Repository URL
+- `{{.app.spec.source.path}}` - Application path
+- `{{.app.status.operationState.startedAt}}` - Operation start time
+- `{{.app.status.operationState.finishedAt}}` - Operation finish time
+
+### Adding New Triggers
+
+To add custom triggers:
+
+1. Add a new template in the ConfigMap
+2. Add a corresponding trigger definition
+3. Subscribe applications to the new trigger
 
 ## Security
 

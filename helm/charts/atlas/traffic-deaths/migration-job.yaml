@@ -9,19 +9,12 @@ metadata:
     app.kubernetes.io/component: migration
 spec:
   backoffLimit: 3
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: traffic-deaths
-      app.kubernetes.io/part-of: atlas
-      app.kubernetes.io/managed-by: argocd
-      job-name: traffic-deaths-migrate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: traffic-deaths
         app.kubernetes.io/part-of: atlas
-        app.kubernetes.io/managed-by: argocd
-        job-name: traffic-deaths-migrate
+        app.kubernetes.io/component: migration
     spec:
       restartPolicy: Never
       containers:

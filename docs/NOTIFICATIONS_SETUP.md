@@ -4,6 +4,8 @@
 
 This document describes how Telegram notifications are configured for ArgoCD deployments using the Infisical Operator for secure secret management.
 
+> **Note**: This setup works with our Azure + K3s infrastructure deployed via Pulumi.
+
 ## Architecture
 
 ```

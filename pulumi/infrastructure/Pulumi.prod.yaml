@@ -1,0 +1,18 @@
+config:
+  azure-native:location: eastus2
+  azure-native:subscriptionId:
+    secure: AAABACaEtCWJE2s9q/YubdmPVj2v2B8M0XZqxtvzZdbHCoKnUgmJDcnswaiBy6iP++cCRAkuvwXLROrblTuIX0BjXQQ= # Set via: pulumi config set azure-native:subscriptionId --secret
+  azure-native:clientId:
+    secure: AAABAFYsynee9yxVJiCV6YfLdkojAL6X6WMw0o+Wr5MDUK3EaHKkInlRa0uh2JDSGiyWJEynGMz7Cb6T3ArA0VtT+I4= # Set via: pulumi config set azure-native:clientId --secret  
+  azure-native:clientSecret:
+    secure: AAABAFtz2N56lnv4fuIWHBqm8/3Bnvjv0xMtacP7A1LkycueXthWqJIbd7SwlNW1eyvBJIpxhJqYbTkSfwEjLUNpWQr9zfa1 # Set via: pulumi config set azure-native:clientSecret --secret
+  azure-native:tenantId:
+    secure: AAABAJp383sGIyPSB3RRbCo3PcjuYRwrkaeL/tQNcIGxPLJ3RZeG1gd1THp7acnCqXvRkKozxZuTyQhnNMC8sj4btsU= # Set via: pulumi config set azure-native:tenantId --secret
+  ameciclo-infrastructure:projectName: ameciclo
+  ameciclo-infrastructure:environment: production
+  ameciclo-infrastructure:postgresqlAdminUsername:
+    secure: null # Set via: pulumi config set postgresqlAdminUsername --secret
+  ameciclo-infrastructure:postgresqlAdminPassword:
+    secure: null # Set via: pulumi config set postgresqlAdminPassword --secret
+  ameciclo-infrastructure:adminSshPublicKey:
+    secure: null # Set via: pulumi config set adminSshPublicKey --secret

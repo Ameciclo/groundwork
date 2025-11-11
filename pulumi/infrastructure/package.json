@@ -1,0 +1,28 @@
+{
+  "name": "ameciclo-infrastructure",
+  "version": "1.0.0",
+  "description": "Ameciclo Azure infrastructure using Pulumi",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node index.ts"
+  },
+  "dependencies": {
+    "@pulumi/azure-native": "^3.10.1",
+    "@pulumi/pulumi": "^3.206.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.0.0"
+  },
+  "keywords": [
+    "pulumi",
+    "azure",
+    "infrastructure",
+    "ameciclo"
+  ],
+  "author": "Ameciclo",
+  "license": "MIT"
+}

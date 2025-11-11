@@ -10,14 +10,31 @@ yarn-error.log
 dist/
 *.tsbuildinfo
 
-# Helm chart dependencies
-helm/charts/*/charts/
-helm/charts/*/Chart.lock
-
 # Environment files
 .env
 .env.local
 .env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
 
 # Credentials (NEVER commit these!)
 credentials.json

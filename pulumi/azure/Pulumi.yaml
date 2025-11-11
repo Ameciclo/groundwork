@@ -1,0 +1,9 @@
+name: groundwork-azure
+runtime: nodejs
+description: Ameciclo Azure infrastructure with K3s using Pulumi
+
+config:
+  azure-native:location:
+    description: Azure region for resources
+    default: westus3
+

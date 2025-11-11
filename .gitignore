@@ -5,6 +5,12 @@
 .terraform.lock.hcl
 terraform.tfvars
 
+# Pulumi files
+pulumi/*/bin/
+pulumi/*/node_modules/
+pulumi/*/Pulumi.*.yaml
+!pulumi/*/Pulumi.*.yaml.example
+
 # Docker stack environment files
 stacks/**/.env
 !stacks/kestra/.env

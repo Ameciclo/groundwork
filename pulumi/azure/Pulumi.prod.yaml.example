@@ -1,0 +1,55 @@
+config:
+  # General Configuration
+  groundwork-azure:environment: production
+  groundwork-azure:project_name: ameciclo
+  
+  # Azure Region
+  azure-native:location: westus3
+  
+  # Resource Group
+  groundwork-azure:resource_group_name: ameciclo-rg
+  
+  # Virtual Network
+  groundwork-azure:vnet_name: ameciclo-vnet
+  groundwork-azure:vnet_address_space:
+    - "10.10.0.0/16"
+  groundwork-azure:database_subnet_name: database-subnet
+  groundwork-azure:database_subnet_prefix:
+    - "10.10.2.0/24"
+  
+  # PostgreSQL Configuration
+  groundwork-azure:postgresql_server_name: ameciclo-postgres
+  groundwork-azure:postgresql_admin_username: psqladmin
+  groundwork-azure:postgresql_version: "16"
+  groundwork-azure:postgresql_sku_name: B_Standard_B2s
+  groundwork-azure:postgresql_storage_mb: 32768
+  
+  # K3s VM Configuration
+  groundwork-azure:k3s_vm_size: Standard_B2as_v2
+  groundwork-azure:admin_username: azureuser
+  
+  # Storage Configuration (currently disabled)
+  groundwork-azure:storage_account_name: ameciclostorage
+  groundwork-azure:storage_account_tier: Standard
+  groundwork-azure:storage_account_replication_type: LRS
+
+  # Kubernetes Configuration
+  groundwork-azure:argocd_version: "7.3.3"
+  groundwork-azure:tailscale_operator_version: "1.90.6"
+  groundwork-azure:git_repo_url: https://github.com/Ameciclo/groundwork.git
+
+  # Tags
+  groundwork-azure:tags:
+    Environment: production
+    Project: ameciclo
+    ManagedBy: pulumi
+    CostCenter: ameciclo-infrastructure
+
+  # Secrets - Set these using Pulumi CLI:
+  # pulumi config set --secret groundwork-azure:postgresql_admin_password <your-password>
+  # pulumi config set --secret groundwork-azure:admin_ssh_public_key "$(cat ~/.ssh/id_rsa.pub)"
+  # pulumi config set --secret groundwork-azure:admin_ssh_private_key "$(cat ~/.ssh/id_rsa)"
+  # pulumi config set --secret groundwork-azure:argocd_admin_password <your-password>
+  # pulumi config set --secret groundwork-azure:tailscale_oauth_client_id <your-client-id>
+  # pulumi config set --secret groundwork-azure:tailscale_oauth_client_secret <your-client-secret>
+

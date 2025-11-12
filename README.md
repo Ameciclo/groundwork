@@ -103,6 +103,12 @@ pulumi up      # Deploy infrastructure
 - **Storage**: 30GB Premium SSD
 - **IP**: Static private + public IP
 
+### 💾 Blob Storage
+- **Type**: Standard LRS (Locally Redundant Storage)
+- **Containers**: `media`, `backups`, `logs`
+- **Access**: Private with VNet integration
+- **TLS**: Minimum version 1.2
+
 </details>
 
 ## 📱 Applications

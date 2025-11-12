@@ -25,6 +25,7 @@ pulumi up
 - **K3s VM** (Standard_B2as_v2) with Ubuntu 22.04 LTS
 - **Security Groups** for SSH, HTTP, HTTPS access
 - **Private DNS** for database connectivity
+- **Storage Account** with Blob Storage containers (media, backups, logs)
 
 ## 📋 Prerequisites
 

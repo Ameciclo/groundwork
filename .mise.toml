@@ -1,0 +1,3 @@
+[tools]
+# Node.js for Pulumi infrastructure and development
+node = "20.18.0"

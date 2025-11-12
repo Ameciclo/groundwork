@@ -10,6 +10,10 @@ yarn-error.log
 dist/
 *.tsbuildinfo
 
+# Build artifacts and temporary directories
+azure/
+pulumi/azure/
+
 # Helm chart dependencies
 helm/charts/*/charts/
 helm/charts/*/Chart.lock

@@ -4,7 +4,7 @@ import { createK3sVm } from "./vm";
 
 // Get configuration
 const config = new pulumi.Config();
-const location = config.get("location") || "eastus2";
+const location = config.get("location") || "westus3";
 const projectName = config.get("projectName") || "ameciclo";
 const environment = config.get("environment") || "production";
 
@@ -184,6 +184,53 @@ const kongDatabase = new azure.dbforpostgresql.Database("kong-db", {
   collation: "en_US.utf8",
 });
 
+// Storage Account for Blob Storage (Azure's S3 equivalent)
+const storageAccount = new azure.storage.StorageAccount("ameciclo-storage", {
+  accountName: `${projectName}stor${environment.substring(0, 4)}`,
+  resourceGroupName: resourceGroup.name,
+  location: location,
+  sku: {
+    name: azure.storage.SkuName.Standard_LRS,
+  },
+  kind: azure.storage.Kind.StorageV2,
+  accessTier: azure.storage.AccessTier.Hot,
+  allowBlobPublicAccess: false,
+  allowSharedKeyAccess: true,
+  minimumTlsVersion: azure.storage.MinimumTlsVersion.TLS1_2,
+  networkRuleSet: {
+    defaultAction: azure.storage.DefaultAction.Allow,
+    virtualNetworkRules: [
+      {
+        virtualNetworkResourceId: k3sSubnet.id,
+        action: azure.storage.Action.Allow,
+      },
+    ],
+  },
+  tags: commonTags,
+});
+
+// Blob Storage Containers
+const mediaContainer = new azure.storage.BlobContainer("media", {
+  containerName: "media",
+  accountName: storageAccount.name,
+  resourceGroupName: resourceGroup.name,
+  publicAccess: azure.storage.PublicAccess.None,
+});
+
+const backupsContainer = new azure.storage.BlobContainer("backups", {
+  containerName: "backups",
+  accountName: storageAccount.name,
+  resourceGroupName: resourceGroup.name,
+  publicAccess: azure.storage.PublicAccess.None,
+});
+
+const logsContainer = new azure.storage.BlobContainer("logs", {
+  containerName: "logs",
+  accountName: storageAccount.name,
+  resourceGroupName: resourceGroup.name,
+  publicAccess: azure.storage.PublicAccess.None,
+});
+
 // Create K3s VM
 const k3sVm = createK3sVm("k3s", {
   resourceGroupName: resourceGroup.name,
@@ -208,3 +255,11 @@ export const k3sVmName = k3sVm.vm.name;
 export const k3sPublicIp = k3sVm.publicIp.ipAddress;
 export const k3sPrivateIp = pulumi.output("10.10.1.4");
 export const k3sSshCommand = pulumi.interpolate`ssh azureuser@${k3sVm.publicIp.ipAddress}`;
+
+// Storage exports
+export const storageAccountName = storageAccount.name;
+export const storageAccountId = storageAccount.id;
+export const storageAccountPrimaryEndpoints = storageAccount.primaryEndpoints;
+export const mediaContainerName = mediaContainer.name;
+export const backupsContainerName = backupsContainer.name;
+export const logsContainerName = logsContainer.name;

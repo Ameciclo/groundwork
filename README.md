@@ -56,12 +56,14 @@ groundwork/
 <summary>Click to expand detailed setup instructions</summary>
 
 ### 1. Install Dependencies
+
 ```bash
 cd infrastructure/pulumi
 npm install
 ```
 
 ### 2. Configure Azure Credentials
+
 ```bash
 # Set Azure authentication
 pulumi config set azure-native:subscriptionId --secret YOUR_SUBSCRIPTION_ID
@@ -78,6 +80,7 @@ pulumi config set adminSshPublicKey --secret "$(cat ~/.ssh/id_rsa.pub)"
 ```
 
 ### 3. Deploy
+
 ```bash
 pulumi preview  # Review what will be created
 pulumi up      # Deploy infrastructure
@@ -91,23 +94,27 @@ pulumi up      # Deploy infrastructure
 <summary>Azure Resources (click to expand)</summary>
 
 ### 🌐 Virtual Network
+
 - **Address Space**: `10.10.0.0/16`
 - **K3s Subnet**: `10.10.1.0/24`
 - **Database Subnet**: `10.10.2.0/24`
 
 ### 🗄️ PostgreSQL Database
+
 - **Tier**: Standard_B2s (2 vCores, 4GB RAM)
 - **Storage**: 32GB, 7-day backups
 - **Networking**: Private only
-- **Databases**: `atlas`, `kong`
+- **Databases**: `atlas`
 
 ### ☸️ K3s Cluster
+
 - **VM Size**: Standard_B2as_v2 (2 vCores, 4GB RAM)
 - **OS**: Ubuntu 22.04 LTS
 - **Storage**: 30GB Premium SSD
 - **IP**: Static private + public IP
 
 ### 💾 Blob Storage
+
 - **Type**: Standard LRS (Locally Redundant Storage)
 - **Containers**: `media`, `backups`, `logs`
 - **Access**: Private with VNet integration
@@ -117,14 +124,15 @@ pulumi up      # Deploy infrastructure
 
 ## 📱 Applications
 
-| Application | Purpose | URL Pattern |
-|-------------|---------|-------------|
-| **Strapi** | Headless CMS | `strapi.az.ameciclo.org` |
-| **Atlas** | Traffic Data APIs | `atlas.az.ameciclo.org` |
-| **Traefik** | Ingress Controller | Auto HTTPS |
-| **ArgoCD** | GitOps Deployment | Internal |
+| Application | Purpose            | URL Pattern              |
+| ----------- | ------------------ | ------------------------ |
+| **Strapi**  | Headless CMS       | `strapi.az.ameciclo.org` |
+| **Atlas**   | Traffic Data APIs  | `atlas.az.ameciclo.org`  |
+| **Traefik** | Ingress Controller | Auto HTTPS               |
+| **ArgoCD**  | GitOps Deployment  | Internal                 |
 
 ### 🔄 GitOps Workflow
+
 1. **Push** code changes to this repository
 2. **ArgoCD** detects changes automatically
 3. **Deploys** applications to Kubernetes cluster
@@ -132,13 +140,13 @@ pulumi up      # Deploy infrastructure
 
 ## 💰 Cost Breakdown
 
-| Service | Tier | Monthly Cost |
-|---------|------|--------------|
-| PostgreSQL | Standard_B2s | ~$25 |
-| VM | Standard_B2as_v2 | ~$45 |
-| Storage | Premium SSD | ~$2 |
-| Networking | Standard | ~$8 |
-| **Total** | | **~$80** |
+| Service    | Tier             | Monthly Cost |
+| ---------- | ---------------- | ------------ |
+| PostgreSQL | Standard_B2s     | ~$25         |
+| VM         | Standard_B2as_v2 | ~$45         |
+| Storage    | Premium SSD      | ~$2          |
+| Networking | Standard         | ~$8          |
+| **Total**  |                  | **~$80**     |
 
 ## 🛠️ Management Commands
 

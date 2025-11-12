@@ -4,7 +4,7 @@ import { createK3sVm } from "./vm";
 
 // Get configuration
 const config = new pulumi.Config();
-const location = config.get("location") || "eastus2";
+const location = config.get("location") || "westus3";
 const projectName = config.get("projectName") || "ameciclo";
 const environment = config.get("environment") || "production";
 
@@ -18,7 +18,7 @@ const commonTags = {
 
 // Resource Group
 const resourceGroup = new azure.resources.ResourceGroup("ameciclo-rg", {
-  resourceGroupName: `${projectName}-rg`,
+  resourceGroupName: `${projectName}-rg-prod`,
   location: location,
   tags: commonTags,
 });
@@ -138,7 +138,7 @@ const postgresqlDnsLink = new azure.privatedns.VirtualNetworkLink(
 const postgresqlServer = new azure.dbforpostgresql.Server(
   "postgresql",
   {
-    serverName: `${projectName}-postgresql`,
+    serverName: `${projectName}-postgres`,
     resourceGroupName: resourceGroup.name,
     location: location,
     administratorLogin: config.requireSecret("postgresqlAdminUsername"),
@@ -150,8 +150,32 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     },
     storage: {
       storageSizeGB: 32,
+      autoGrow: azure.dbforpostgresql.StorageAutoGrow.Disabled,
+      iops: 120,
+      tier: azure.dbforpostgresql.AzureManagedDiskPerformanceTiers.P4,
+      type: "",
     },
     availabilityZone: "1",
+    authConfig: {
+      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuthEnum.Disabled,
+      passwordAuth: azure.dbforpostgresql.PasswordAuthEnum.Enabled,
+    },
+    dataEncryption: {
+      type: azure.dbforpostgresql.ArmServerKeyType.SystemManaged,
+    },
+    highAvailability: {
+      mode: azure.dbforpostgresql.HighAvailabilityMode.Disabled,
+    },
+    maintenanceWindow: {
+      customWindow: "Disabled",
+      dayOfWeek: 0,
+      startHour: 0,
+      startMinute: 0,
+    },
+    replica: {
+      role: azure.dbforpostgresql.ReplicationRole.Primary,
+    },
+    replicationRole: azure.dbforpostgresql.ReplicationRole.Primary,
     network: {
       delegatedSubnetResourceId: databaseSubnet.id,
       privateDnsZoneArmResourceId: postgresqlDnsZone.id,
@@ -176,13 +200,17 @@ const atlasDatabase = new azure.dbforpostgresql.Database("atlas-db", {
   collation: "en_US.utf8",
 });
 
-const kongDatabase = new azure.dbforpostgresql.Database("kong-db", {
-  databaseName: "kong",
+const strapiDatabase = new azure.dbforpostgresql.Database("strapi-db", {
+  databaseName: "strapi",
   serverName: postgresqlServer.name,
   resourceGroupName: resourceGroup.name,
   charset: "UTF8",
   collation: "en_US.utf8",
 });
+
+
+
+
 
 // Storage Account for Blob Storage (Azure's S3 equivalent)
 const storageAccount = new azure.storage.StorageAccount("ameciclo-storage", {

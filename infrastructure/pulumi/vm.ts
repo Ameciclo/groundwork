@@ -25,7 +25,14 @@ export function createK3sVm(name: string, args: VmArgs): {
         publicIPAllocationMethod: "Static",
         sku: {
             name: "Standard",
+            tier: "Regional",
         },
+        ddosSettings: {
+            protectionMode: "VirtualNetworkInherited",
+        },
+        idleTimeoutInMinutes: 4,
+        ipAddress: "4.236.123.221",
+        publicIPAddressVersion: "IPv4",
         tags: args.tags,
     });
 

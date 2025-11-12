@@ -11,12 +11,12 @@ dist/
 *.tsbuildinfo
 
 # Build artifacts and temporary directories
-azure/
-pulumi/azure/
+infrastructure/terraform/
+infrastructure/pulumi/node_modules/
 
 # Helm chart dependencies
-helm/charts/*/charts/
-helm/charts/*/Chart.lock
+kubernetes/*/charts/
+kubernetes/*/Chart.lock
 
 # Environment files
 .env

@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik
+  name: atlas
   namespace: argocd
   annotations:
     # Enhanced Telegram notifications
@@ -13,16 +13,19 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ameciclo/groundwork
+    repoURL: https://github.com/Ameciclo/groundwork.git
     targetRevision: main
-    path: helm/charts/traefik
+    path: kubernetes/applications/atlas
+    kustomize: {}
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: atlas
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - RespectIgnoreDifferences=true
+      - Replace=true
+  revisionHistoryLimit: 10
+

@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/Ameciclo/groundwork.git
     targetRevision: main
-    path: helm/charts/argocd-config
+    path: kubernetes/infrastructure/argocd-config
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -6,7 +6,7 @@ Modern cloud infrastructure for Ameciclo using **Pulumi + Azure + Kubernetes**.
 
 ```bash
 # 1. Deploy infrastructure
-cd pulumi/infrastructure
+cd infrastructure/pulumi
 ./scripts/setup.sh    # Configure credentials
 pulumi up             # Deploy to Azure
 
@@ -31,11 +31,15 @@ kubectl get applications -n argocd
 
 ```
 groundwork/
-├── 🏗️  pulumi/infrastructure/    # Azure infrastructure (Pulumi TypeScript)
-├── ⚙️  pulumi/scripts/           # Setup scripts & Ansible playbooks
-├── ☸️  helm/                     # Kubernetes applications
-│   ├── charts/                  # Strapi, Atlas, Traefik, ArgoCD
-│   └── environments/            # Production configurations
+├── 🏗️  infrastructure/           # Infrastructure as Code
+│   ├── pulumi/                  # Pulumi (Azure infrastructure)
+│   └── terraform/               # Terraform (alternative)
+├── ⚙️  automation/               # Deployment automation
+│   └── ansible/                 # Ansible playbooks
+├── ☸️  kubernetes/               # Kubernetes manifests
+│   ├── applications/            # Custom applications (Strapi, Atlas)
+│   ├── infrastructure/          # Platform components (Traefik, ArgoCD)
+│   └── environments/            # Environment configurations
 └── 📚 docs/                     # Documentation & guides
 ```
 
@@ -53,7 +57,7 @@ groundwork/
 
 ### 1. Install Dependencies
 ```bash
-cd pulumi/infrastructure
+cd infrastructure/pulumi
 npm install
 ```
 
@@ -140,7 +144,7 @@ pulumi up      # Deploy infrastructure
 
 ```bash
 # Infrastructure
-cd pulumi/infrastructure
+cd infrastructure/pulumi
 pulumi stack output              # View outputs
 pulumi up                       # Update infrastructure
 pulumi destroy                  # ⚠️ Destroy everything
@@ -162,8 +166,8 @@ kubectl get pods -A                              # Check status
 ## 📚 Documentation
 
 - [📖 Detailed Docs](docs/) - Kubernetes guides and concepts
-- [🏗️ Infrastructure Setup](pulumi/infrastructure/README.md) - Pulumi details
-- [☸️ Application Configs](helm/) - Kubernetes manifests
+- [🏗️ Infrastructure Setup](infrastructure/pulumi/README.md) - Pulumi details
+- [☸️ Application Configs](kubernetes/) - Kubernetes manifests
 
 ## 🤝 Contributing
 

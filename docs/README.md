@@ -6,7 +6,7 @@ This directory contains documentation for the Ameciclo infrastructure and applic
 
 ### Getting Started
 - [Main README](../README.md) - Overview and quick start guide
-- [Pulumi Infrastructure](../pulumi/infrastructure/README.md) - Detailed infrastructure setup
+- [Pulumi Infrastructure](../infrastructure/pulumi/README.md) - Detailed infrastructure setup
 
 ### Kubernetes Concepts
 - [Kubernetes for Docker Compose Users](KUBERNETES_FOR_DOCKER_COMPOSE_USERS.md) - Learn Kubernetes if you know Docker Compose
@@ -26,12 +26,13 @@ This directory contains documentation for the Ameciclo infrastructure and applic
 
 ### Application Structure
 ```
-helm/
-├── charts/                    # Application definitions
+kubernetes/
+├── applications/              # Custom applications
 │   ├── strapi/               # CMS application
-│   ├── atlas/                # Data APIs
-│   │   ├── docs/            # Documentation site
-│   │   └── traffic-deaths/  # Traffic data API
+│   └── atlas/                # Data APIs
+│       ├── docs/            # Documentation site
+│       └── traffic-deaths/  # Traffic data API
+├── infrastructure/           # Platform components
 │   ├── traefik/             # Ingress controller
 │   └── argocd-config/       # GitOps configuration
 └── environments/             # Environment-specific configs

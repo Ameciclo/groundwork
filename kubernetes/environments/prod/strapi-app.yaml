@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: atlas
+  name: strapi
   namespace: argocd
   annotations:
     # Enhanced Telegram notifications
@@ -15,17 +15,14 @@ spec:
   source:
     repoURL: https://github.com/Ameciclo/groundwork.git
     targetRevision: main
-    path: helm/charts/atlas
-    kustomize: {}
+    path: kubernetes/applications/strapi
   destination:
     server: https://kubernetes.default.svc
-    namespace: atlas
+    namespace: strapi
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
-  revisionHistoryLimit: 10
 

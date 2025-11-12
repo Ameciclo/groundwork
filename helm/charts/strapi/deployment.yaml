@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: strapi
-          image: ghcr.io/ameciclo/strapi:0.1.0-06b32e8
+          image: ghcr.io/ameciclo/strapi:0.1.0-17bc1ea
           imagePullPolicy: Always
           ports:
             - name: http

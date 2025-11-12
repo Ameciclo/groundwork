@@ -4,7 +4,7 @@ import { createK3sVm } from "./vm";
 
 // Get configuration
 const config = new pulumi.Config();
-const location = config.get("location") || "westus3";
+const location = config.get("location") || "eastus2";
 const projectName = config.get("projectName") || "ameciclo";
 const environment = config.get("environment") || "production";
 

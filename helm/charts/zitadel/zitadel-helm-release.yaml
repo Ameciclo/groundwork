@@ -95,10 +95,12 @@ spec:
     # Init job configuration
     initJob:
       activeDeadlineSeconds: 300
+      envVarsSecret: zitadel-db-password
     
     # Setup job configuration
     setupJob:
       activeDeadlineSeconds: 300
+      envVarsSecret: zitadel-db-password
 
     # Load environment variables from secret
     envVarsSecret: zitadel-db-password

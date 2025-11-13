@@ -5,7 +5,7 @@ namespace: zitadel
 
 resources:
   - namespace.yaml
-  - zitadel-infisical-secretstore.yaml
+  - zitadel-secrets.yaml
   - zitadel-helm-release.yaml
   - zitadel-ingress.yaml
 

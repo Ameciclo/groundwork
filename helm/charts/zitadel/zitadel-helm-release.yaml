@@ -109,7 +109,7 @@ spec:
 
     # Setup job configuration
     setupJob:
-      activeDeadlineSeconds: 600
+      activeDeadlineSeconds: 1200
       env:
         - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
           valueFrom:
@@ -121,6 +121,8 @@ spec:
             secretKeyRef:
               name: zitadel-db-password
               key: DATABASE_PASSWORD
+      annotations:
+        helm.sh/hook-delete-policy: before-hook-creation
 
     # Load environment variables from secret
     envVarsSecret: zitadel-db-password

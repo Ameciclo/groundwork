@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zitadel
+  namespace: argocd
+  annotations:
+    # Enhanced Telegram notifications
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-running.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-status-unknown.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: helm/charts/zitadel
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zitadel
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

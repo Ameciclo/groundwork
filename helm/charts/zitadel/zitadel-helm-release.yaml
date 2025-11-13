@@ -1,0 +1,115 @@
+# Zitadel Helm Release
+# Deploys Zitadel using the official Helm chart
+# Identity and Access Management Solution
+
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: zitadel
+  namespace: zitadel
+spec:
+  repo: https://charts.zitadel.com
+  chart: zitadel
+  version: 9.12.3
+  targetNamespace: zitadel
+  valuesContent: |-
+    # Zitadel configuration
+    zitadel:
+      # Master key for encryption
+      # IMPORTANT: Change this in production and store securely
+      masterkeySecretName: zitadel-masterkey
+
+      # Configure external domain
+      configmapConfig:
+        ExternalDomain: zitadel.armadillo-hamal.ts.net
+        ExternalPort: 443
+        ExternalSecure: true
+        TLS:
+          Enabled: false  # TLS is handled by Tailscale/Traefik
+
+        # Database configuration using connection string
+        Database:
+          Postgres:
+            Host: ameciclo-postgres.postgres.database.azure.com
+            Port: 5432
+            Database: zitadel
+            MaxOpenConns: 25
+            MaxIdleConns: 10
+            MaxConnLifetime: 1h
+            MaxConnIdleTime: 5m
+            User:
+              Username: psqladmin
+              SSL:
+                Mode: require
+            Admin:
+              Username: psqladmin
+              SSL:
+                Mode: require
+
+      # Database credentials from secrets
+      dbSslCaCrtSecret: ""
+      dbSslAdminCrtSecret: ""
+      dbSslUserCrtSecret: ""
+
+      # Secret references for database password
+      secretConfig:
+        Database:
+          Postgres:
+            User:
+              Password:
+                SecretName: zitadel-db-password
+                SecretKey: DATABASE_PASSWORD
+            Admin:
+              Password:
+                SecretName: zitadel-db-password
+                SecretKey: DATABASE_PASSWORD
+    
+    # Replica configuration
+    replicaCount: 2
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 8080
+      protocol: http2
+      annotations:
+        traefik.ingress.kubernetes.io/service.serversscheme: h2c
+    
+    # Ingress disabled - using separate Tailscale ingress
+    ingress:
+      enabled: false
+    
+    # Login v2 configuration
+    login:
+      enabled: true
+      replicaCount: 2
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      service:
+        type: ClusterIP
+        port: 8080
+      ingress:
+        enabled: false
+    
+    # Init job configuration
+    initJob:
+      activeDeadlineSeconds: 300
+    
+    # Setup job configuration
+    setupJob:
+      activeDeadlineSeconds: 300
+

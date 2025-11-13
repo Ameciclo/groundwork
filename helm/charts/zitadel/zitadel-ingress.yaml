@@ -1,0 +1,31 @@
+# Zitadel Tailscale Ingress
+# Exposes Zitadel through Tailscale network
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zitadel
+  namespace: zitadel
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: zitadel
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: tailscale
+  rules:
+    - host: zitadel
+      http:
+        paths:
+          # Main Zitadel application
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - zitadel
+      secretName: zitadel-tls
+

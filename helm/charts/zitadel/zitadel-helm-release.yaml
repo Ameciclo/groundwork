@@ -94,13 +94,33 @@ spec:
     
     # Init job configuration
     initJob:
-      activeDeadlineSeconds: 300
-      envVarsSecret: zitadel-db-password
-    
+      activeDeadlineSeconds: 600
+      env:
+        - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zitadel-db-password
+              key: DATABASE_PASSWORD
+        - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zitadel-db-password
+              key: DATABASE_PASSWORD
+
     # Setup job configuration
     setupJob:
-      activeDeadlineSeconds: 300
-      envVarsSecret: zitadel-db-password
+      activeDeadlineSeconds: 600
+      env:
+        - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zitadel-db-password
+              key: DATABASE_PASSWORD
+        - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zitadel-db-password
+              key: DATABASE_PASSWORD
 
     # Load environment variables from secret
     envVarsSecret: zitadel-db-password

@@ -12,6 +12,7 @@ This directory contains documentation for the Ameciclo infrastructure and applic
 
 ### Local Development
 - [k9s Setup](k9s-setup.md) - Access cluster with k9s via Tailscale
+- [Monitoring Setup](monitoring-setup.md) - Prometheus + Grafana deployment guide
 
 ### Kubernetes Concepts
 - [Kubernetes for Docker Compose Users](KUBERNETES_FOR_DOCKER_COMPOSE_USERS.md) - Learn Kubernetes if you know Docker Compose

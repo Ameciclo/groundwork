@@ -61,6 +61,12 @@ To:
 server: https://10.10.1.4:6443
 ```
 
+And rename the context:
+```bash
+export KUBECONFIG=~/.kube/k3s-config
+kubectl config rename-context default ameciclo-k3s-prod
+```
+
 ## Step 3: Accept Tailscale Routes
 
 Make sure you've accepted Tailscale subnet routes:
@@ -118,7 +124,7 @@ KUBECONFIG=~/.kube/config:~/.kube/k3s-config kubectl config view --flatten > ~/.
 mv ~/.kube/config.merged ~/.kube/config
 
 # Set k3s as default context
-kubectl config use-context default
+kubectl config use-context ameciclo-k3s-prod
 ```
 
 ### Option B: Use kubectx/kubens
@@ -128,8 +134,8 @@ kubectl config use-context default
 brew install kubectx
 
 # Switch between contexts
-kubectx default  # k3s cluster
-kubectx -        # previous context
+kubectx ameciclo-k3s-prod  # k3s cluster
+kubectx -                  # previous context
 ```
 
 ### Option C: Add alias

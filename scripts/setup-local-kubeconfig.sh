@@ -52,10 +52,16 @@ else
     sed -i 's|https://127.0.0.1:6443|https://10.10.1.4:6443|g' ~/.kube/k3s-config
 fi
 
+# Rename context to something meaningful
+echo "Renaming context to 'ameciclo-k3s-prod'..."
+export KUBECONFIG=~/.kube/k3s-config
+kubectl config rename-context default ameciclo-k3s-prod 2>/dev/null || true
+
 echo ""
 echo "✅ Kubeconfig setup complete!"
 echo ""
 echo "Kubeconfig saved to: ~/.kube/k3s-config"
+echo "Context name: ameciclo-k3s-prod"
 echo ""
 echo "Next steps:"
 echo ""
@@ -68,6 +74,9 @@ echo "   kubectl get nodes"
 echo ""
 echo "3. Launch k9s:"
 echo "   k9s --kubeconfig ~/.kube/k3s-config"
+echo ""
+echo "4. Use with kubectx (if installed):"
+echo "   kubectx ameciclo-k3s-prod"
 echo ""
 echo "Or add to your shell profile (~/.zshrc or ~/.bashrc):"
 echo "   alias k9s-k3s='KUBECONFIG=~/.kube/k3s-config k9s'"

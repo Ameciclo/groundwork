@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: zitadel
-  labels:
-    app.kubernetes.io/name: zitadel
-    app.kubernetes.io/part-of: zitadel
-

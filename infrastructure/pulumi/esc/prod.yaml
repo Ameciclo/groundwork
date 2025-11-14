@@ -22,13 +22,13 @@ values:
     projectName: "ameciclo"
     environment: "production"
 
-# Expose these values to Pulumi IaC stacks
-pulumiConfig:
-  # SSH public key for VM access
-  adminSshPublicKey: ${ssh.publicKey}
-  
-  # Azure configuration
-  location: ${azure.location}
-  projectName: ${azure.projectName}
-  environment: ${azure.environment}
+  # Expose these values to Pulumi IaC stacks
+  pulumiConfig:
+    # SSH public key for VM access
+    adminSshPublicKey: ${ssh.publicKey}
+
+    # Azure configuration
+    location: ${azure.location}
+    projectName: ${azure.projectName}
+    environment: ${azure.environment}
 

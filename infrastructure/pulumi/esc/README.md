@@ -92,16 +92,17 @@ values:
   ssh:
     publicKey:
       fn::secret: "your-ssh-public-key"
-  
+
   azure:
     location: "westus3"
     projectName: "ameciclo"
 
-pulumiConfig:
-  # Expose values to Pulumi IaC stacks
-  adminSshPublicKey: ${ssh.publicKey}
-  location: ${azure.location}
-  projectName: ${azure.projectName}
+  # pulumiConfig must be inside values block
+  pulumiConfig:
+    # Expose values to Pulumi IaC stacks
+    adminSshPublicKey: ${ssh.publicKey}
+    location: ${azure.location}
+    projectName: ${azure.projectName}
 ```
 
 ## Security Best Practices

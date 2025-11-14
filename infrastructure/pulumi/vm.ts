@@ -30,11 +30,6 @@ export function createK3sVm(
       name: "Standard",
       tier: "Regional",
     },
-    ddosSettings: {
-      protectionMode: "VirtualNetworkInherited",
-    },
-    idleTimeoutInMinutes: 4,
-    ipAddress: "4.236.123.221",
     publicIPAddressVersion: "IPv4",
     tags: args.tags,
   });
@@ -46,7 +41,7 @@ export function createK3sVm(
     location: args.location,
     ipConfigurations: [
       {
-        name: "testconfiguration1", // Must match existing IP config name (cannot rename primary)
+        name: "ipconfig1",
         subnet: {
           id: args.subnetId,
         },
@@ -55,6 +50,7 @@ export function createK3sVm(
         publicIPAddress: {
           id: publicIp.id,
         },
+        primary: true,
       },
     ],
     networkSecurityGroup: {
@@ -72,7 +68,7 @@ export function createK3sVm(
       vmSize: "Standard_B2as_v2",
     },
     osProfile: {
-      computerName: "ameciclo-k3s-vm", // Must match existing (cannot rename)
+      computerName: `${args.projectName}-k3s`,
       adminUsername: "azureuser",
       linuxConfiguration: {
         disablePasswordAuthentication: true,
@@ -94,7 +90,7 @@ export function createK3sVm(
         version: "latest",
       },
       osDisk: {
-        name: "ameciclo-k3s-vm_OsDisk_1_6fdbe0eb5d384f0cb44764648e92d771", // Must match existing disk (cannot rename)
+        name: `${args.projectName}-k3s-osdisk`,
         caching: "ReadWrite",
         createOption: "FromImage",
         managedDisk: {

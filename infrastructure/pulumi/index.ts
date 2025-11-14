@@ -1,13 +1,20 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
+import * as random from "@pulumi/random";
 import { createK3sVm } from "./vm";
-import { createDatabaseUser } from "./database-users";
 
 // Get configuration
 const config = new pulumi.Config();
 const location = config.get("location") || "westus3";
 const projectName = config.get("projectName") || "ameciclo";
 const environment = config.get("environment") || "production";
+
+// Generate secure random password for PostgreSQL admin
+const postgresqlPassword = new random.RandomPassword("postgresql-admin-password", {
+  length: 32,
+  special: true,
+  overrideSpecial: "!#$%&*()-_=+[]{}<>:?",
+});
 
 // Common tags
 const commonTags = {
@@ -142,8 +149,8 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     serverName: `${projectName}-postgres`,
     resourceGroupName: resourceGroup.name,
     location: location,
-    administratorLogin: config.requireSecret("postgresqlAdminUsername"),
-    administratorLoginPassword: config.requireSecret("postgresqlAdminPassword"),
+    administratorLogin: "psqladmin",
+    administratorLoginPassword: postgresqlPassword.result,
     version: azure.dbforpostgresql.ServerVersion.ServerVersion_16,
     sku: {
       name: "Standard_B2s",
@@ -215,35 +222,6 @@ const zitadelDatabase = new azure.dbforpostgresql.Database("zitadel-db", {
   resourceGroupName: resourceGroup.name,
   charset: "UTF8",
   collation: "en_US.utf8",
-});
-
-// Create dedicated database users with the PostgreSQL provider
-// These are managed declaratively and passwords are stored encrypted in Pulumi state
-const strapiUser = createDatabaseUser("strapi-user", {
-  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
-  adminUsername: config.requireSecret("postgresqlAdminUsername"),
-  adminPassword: config.requireSecret("postgresqlAdminPassword"),
-  databaseName: "strapi",
-  userName: "strapi_user",
-  databases: [strapiDatabase],
-});
-
-const atlasUser = createDatabaseUser("atlas-user", {
-  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
-  adminUsername: config.requireSecret("postgresqlAdminUsername"),
-  adminPassword: config.requireSecret("postgresqlAdminPassword"),
-  databaseName: "atlas",
-  userName: "atlas_user",
-  databases: [atlasDatabase],
-});
-
-const zitadelUser = createDatabaseUser("zitadel-user", {
-  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
-  adminUsername: config.requireSecret("postgresqlAdminUsername"),
-  adminPassword: config.requireSecret("postgresqlAdminPassword"),
-  databaseName: "zitadel",
-  userName: "zitadel_user",
-  databases: [zitadelDatabase],
 });
 
 
@@ -330,10 +308,6 @@ export const mediaContainerName = mediaContainer.name;
 export const backupsContainerName = backupsContainer.name;
 export const logsContainerName = logsContainer.name;
 
-// Database user credentials (encrypted in Pulumi state)
-export const strapiDbUsername = pulumi.output(strapiUser.username);
-export const strapiDbPassword = pulumi.secret(strapiUser.password);
-export const atlasDbUsername = pulumi.output(atlasUser.username);
-export const atlasDbPassword = pulumi.secret(atlasUser.password);
-export const zitadelDbUsername = pulumi.output(zitadelUser.username);
-export const zitadelDbPassword = pulumi.secret(zitadelUser.password);
+// PostgreSQL admin credentials (encrypted in Pulumi state)
+export const postgresqlAdminUsername = pulumi.output("psqladmin");
+export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);

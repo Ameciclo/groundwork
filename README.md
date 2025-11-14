@@ -7,7 +7,8 @@ Modern cloud infrastructure for Ameciclo using **Pulumi + Azure + Kubernetes**.
 ```bash
 # 1. Deploy infrastructure
 cd infrastructure/pulumi
-./scripts/setup.sh    # Configure credentials
+npm install           # Install dependencies
+pulumi stack init ameciclo/prod  # Initialize stack
 pulumi up             # Deploy to Azure
 
 # 2. Access your cluster
@@ -20,35 +21,39 @@ kubectl get applications -n argocd
 ## 🏗️ What Gets Deployed
 
 - **🌐 Azure Virtual Network** - Secure networking with K3s and database subnets
-- **🗄️ PostgreSQL Database** - Managed database with private connectivity
-- **☸️ K3s Kubernetes Cluster** - Lightweight Kubernetes on Ubuntu 22.04 LTS
-- **🔒 Network Security** - Firewall rules and private DNS
-- **📱 Applications** - Strapi CMS, Atlas APIs, Traefik ingress, ArgoCD GitOps
+- **🗄️ PostgreSQL Flexible Server** - Private database (Standard_B2s) with 3 databases: strapi, atlas, zitadel
+- **☸️ K3s Kubernetes Cluster** - Lightweight Kubernetes on Ubuntu 22.04 LTS (Standard_B2as_v2)
+- **💾 Blob Storage** - Media, backups, and logs containers
+- **🔒 Network Security** - Firewall rules, private DNS, and SSH-only access
+- **📱 Applications** - Strapi CMS, Atlas APIs, Zitadel Auth, Traefik ingress, ArgoCD GitOps
 
-**💰 Cost**: ~$80/month for complete infrastructure
+**💰 Cost**: ~$70-80/month for complete infrastructure
 
 ## 📁 Repository Structure
 
 ```
 groundwork/
 ├── 🏗️  infrastructure/           # Infrastructure as Code
-│   ├── pulumi/                  # Pulumi (Azure infrastructure)
-│   └── terraform/               # Terraform (alternative)
-├── ⚙️  automation/               # Deployment automation
-│   └── ansible/                 # Ansible playbooks
+│   └── pulumi/                  # Pulumi (Azure infrastructure)
+│       ├── index.ts             # Main infrastructure definition
+│       ├── vm.ts                # K3s VM configuration
+│       ├── scripts/             # Database setup scripts
+│       └── esc/                 # Pulumi ESC environments
 ├── ☸️  kubernetes/               # Kubernetes manifests
-│   ├── applications/            # Custom applications (Strapi, Atlas)
+│   ├── applications/            # Custom applications (Strapi, Atlas, Zitadel)
 │   ├── infrastructure/          # Platform components (Traefik, ArgoCD)
-│   └── environments/            # Environment configurations
+│   └── argocd/                  # ArgoCD application definitions
 └── 📚 docs/                     # Documentation & guides
 ```
 
 ## 📋 Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
-- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139.0+
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 - Azure account + Service Principal
 - SSH key pair
+- Pulumi Cloud account (for ESC environments)
 
 ## 🔧 Detailed Setup
 
@@ -62,28 +67,51 @@ cd infrastructure/pulumi
 npm install
 ```
 
-### 2. Configure Azure Credentials
+### 2. Configure Pulumi ESC Environment
 
 ```bash
-# Set Azure authentication
-pulumi config set azure-native:subscriptionId --secret YOUR_SUBSCRIPTION_ID
-pulumi config set azure-native:clientId --secret YOUR_CLIENT_ID
-pulumi config set azure-native:clientSecret --secret YOUR_CLIENT_SECRET
-pulumi config set azure-native:tenantId --secret YOUR_TENANT_ID
+# Create ESC environment
+pulumi env init ameciclo/infrastructure-prod
 
-# Set database credentials
-pulumi config set postgresqlAdminUsername --secret YOUR_DB_USERNAME
-pulumi config set postgresqlAdminPassword --secret YOUR_DB_PASSWORD
+# Edit environment (copy from infrastructure/pulumi/esc/prod.yaml)
+pulumi env edit ameciclo/infrastructure-prod
 
-# Set SSH key
-pulumi config set adminSshPublicKey --secret "$(cat ~/.ssh/id_rsa.pub)"
+# Update SSH public key in the environment
+cat ~/.ssh/id_rsa.pub  # Copy this value
 ```
 
-### 3. Deploy
+### 3. Configure Azure Authentication
+
+```bash
+# Login to Azure
+az login
+
+# Pulumi will auto-detect Azure credentials from Azure CLI
+```
+
+### 4. Set Stack Configuration
+
+```bash
+# Set SSH key (if not using ESC)
+pulumi config set --secret adminSshPublicKey "$(cat ~/.ssh/id_rsa.pub)"
+```
+
+### 5. Deploy
 
 ```bash
 pulumi preview  # Review what will be created
 pulumi up      # Deploy infrastructure
+```
+
+### 6. Create Database Users
+
+```bash
+# SSH into the K3s VM
+ssh azureuser@$(pulumi stack output k3sPublicIp)
+
+# Copy and run the database setup script
+# (Script is automatically copied during deployment)
+POSTGRES_ADMIN_PASSWORD='<from-pulumi-output>' ./create-database-users.sh
 ```
 
 </details>
@@ -99,19 +127,21 @@ pulumi up      # Deploy infrastructure
 - **K3s Subnet**: `10.10.1.0/24`
 - **Database Subnet**: `10.10.2.0/24`
 
-### 🗄️ PostgreSQL Database
+### 🗄️ PostgreSQL Flexible Server
 
 - **Tier**: Standard_B2s (2 vCores, 4GB RAM)
 - **Storage**: 32GB, 7-day backups
-- **Networking**: Private only
-- **Databases**: `atlas`
+- **Networking**: Private only (VNet access)
+- **Databases**: `strapi`, `atlas`, `zitadel`
+- **Users**: Auto-generated with secure passwords
 
 ### ☸️ K3s Cluster
 
-- **VM Size**: Standard_B2as_v2 (2 vCores, 4GB RAM)
+- **VM Size**: Standard_B2as_v2 (2 vCPUs, 8GB RAM)
 - **OS**: Ubuntu 22.04 LTS
 - **Storage**: 30GB Premium SSD
 - **IP**: Static private + public IP
+- **K3s Version**: Latest stable
 
 ### 💾 Blob Storage
 
@@ -124,12 +154,14 @@ pulumi up      # Deploy infrastructure
 
 ## 📱 Applications
 
-| Application | Purpose            | URL Pattern              |
-| ----------- | ------------------ | ------------------------ |
-| **Strapi**  | Headless CMS       | `strapi.az.ameciclo.org` |
-| **Atlas**   | Traffic Data APIs  | `atlas.az.ameciclo.org`  |
-| **Traefik** | Ingress Controller | Auto HTTPS               |
-| **ArgoCD**  | GitOps Deployment  | Internal                 |
+| Application | Purpose              | URL Pattern              |
+| ----------- | -------------------- | ------------------------ |
+| **Strapi**  | Headless CMS         | `strapi.az.ameciclo.org` |
+| **Atlas**   | Traffic Data APIs    | `atlas.az.ameciclo.org`  |
+| **Zitadel** | Identity & Auth      | `auth.az.ameciclo.org`   |
+| **Traefik** | Ingress Controller   | Auto HTTPS               |
+| **ArgoCD**  | GitOps Deployment    | Internal                 |
+| **Infisical** | Secrets Management | Internal                 |
 
 ### 🔄 GitOps Workflow
 
@@ -142,34 +174,43 @@ pulumi up      # Deploy infrastructure
 
 | Service    | Tier             | Monthly Cost |
 | ---------- | ---------------- | ------------ |
-| PostgreSQL | Standard_B2s     | ~$25         |
-| VM         | Standard_B2as_v2 | ~$45         |
-| Storage    | Premium SSD      | ~$2          |
+| PostgreSQL | Standard_B2s     | ~$24         |
+| VM (K3s)   | Standard_B2as_v2 | ~$38         |
+| Storage    | Standard LRS     | ~$2          |
 | Networking | Standard         | ~$8          |
-| **Total**  |                  | **~$80**     |
+| **Total**  |                  | **~$72**     |
+
+*Costs are estimates for West US 3 region. Actual costs may vary.*
 
 ## 🛠️ Management Commands
 
 ```bash
 # Infrastructure
 cd infrastructure/pulumi
-pulumi stack output              # View outputs
-pulumi up                       # Update infrastructure
-pulumi destroy                  # ⚠️ Destroy everything
+pulumi stack output                              # View outputs
+pulumi stack output postgresqlAdminPassword --show-secrets  # Get DB password
+pulumi up                                        # Update infrastructure
+pulumi destroy                                   # ⚠️ Destroy everything
 
-# Applications
-ssh azureuser@$(pulumi stack output k3sPublicIp)  # Access cluster
-kubectl get applications -n argocd                # View apps
-kubectl get pods -A                              # Check status
+# Access K3s VM
+ssh azureuser@$(pulumi stack output k3sPublicIp)
+
+# Kubernetes (from VM)
+kubectl get applications -n argocd               # View ArgoCD apps
+kubectl get pods -A                              # Check all pods
+kubectl logs -n <namespace> <pod-name>           # View logs
+btop                                             # System monitor
 ```
 
 ## 🔒 Security Features
 
-- ✅ **Private Database** - No public access
+- ✅ **Private Database** - PostgreSQL only accessible from VNet
 - ✅ **SSH Key Auth** - No password authentication
-- ✅ **Network Security Groups** - Restricted port access
-- ✅ **Secret Management** - Pulumi secrets + Infisical
+- ✅ **Network Security Groups** - Restricted port access (SSH, HTTP, HTTPS only)
+- ✅ **Secret Management** - Pulumi ESC + Infisical
 - ✅ **Auto HTTPS** - Traefik + Let's Encrypt
+- ✅ **Encrypted Secrets** - All passwords encrypted in Pulumi state
+- ✅ **Private DNS** - Internal DNS resolution for database
 
 ## 📚 Documentation
 

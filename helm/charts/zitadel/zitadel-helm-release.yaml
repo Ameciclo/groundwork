@@ -10,7 +10,7 @@ metadata:
 spec:
   repo: https://charts.zitadel.com
   chart: zitadel
-  version: 8.5.1  # Use v8 which includes Zitadel v2.x with built-in login UI
+  version: 8.4.0  # Use v8 with Zitadel v2.x for built-in login UI
   targetNamespace: zitadel
   valuesContent: |-
     # Set Zitadel app version explicitly

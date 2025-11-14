@@ -7,6 +7,11 @@ This directory contains documentation for the Ameciclo infrastructure and applic
 ### Getting Started
 - [Main README](../README.md) - Overview and quick start guide
 - [Pulumi Infrastructure](../infrastructure/pulumi/README.md) - Detailed infrastructure setup
+- [Ansible Provisioning](../automation/ansible/README.md) - K3s VM provisioning guide
+- [Ansible Quick Start](../automation/ansible/QUICKSTART.md) - Step-by-step provisioning
+
+### Local Development
+- [k9s Setup](k9s-setup.md) - Access cluster with k9s via Tailscale
 
 ### Kubernetes Concepts
 - [Kubernetes for Docker Compose Users](KUBERNETES_FOR_DOCKER_COMPOSE_USERS.md) - Learn Kubernetes if you know Docker Compose
@@ -15,6 +20,9 @@ This directory contains documentation for the Ameciclo infrastructure and applic
 ### GitOps & Deployment
 - [ArgoCD Sync Explained](ARGOCD_SYNC_EXPLAINED.md) - How GitOps deployments work
 - [Notifications Setup](NOTIFICATIONS_SETUP.md) - Telegram notifications configuration
+
+### Migration & Troubleshooting
+- [Traefik Migration](traefik-migration.md) - Historical: K3s Traefik to ArgoCD-managed migration
 
 ## Application Documentation
 

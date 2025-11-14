@@ -34,8 +34,9 @@ kubectl get applications -n argocd
 
 ### GitOps (ArgoCD)
 - **Tailscale** - Ingress and subnet router configuration
+- **Traefik** - Ingress controller v37.2.0 with Let's Encrypt
 - **Applications** - Strapi CMS, Atlas APIs, Zitadel Auth
-- **Infrastructure** - Traefik ingress, Infisical secrets
+- **Infrastructure** - Infisical secrets management
 
 **💰 Cost**: ~$70-80/month for complete infrastructure
 

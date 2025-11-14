@@ -1,16 +1,21 @@
 # Traefik Migration Guide
 
-## Current Situation
+> **✅ MIGRATION COMPLETED** - This document is kept for historical reference.
+>
+> The infrastructure now uses ArgoCD-managed Traefik v37.2.0.
+> K3s is configured with `--disable traefik` to prevent conflicts.
 
-The K3s VM currently has **K3s built-in Traefik** (v34.2.0) running.
+## Background
+
+Previously, K3s included built-in Traefik (v34.2.0) by default.
 
 However, the repository defines an **ArgoCD-managed Traefik** (v37.2.0) in `kubernetes/infrastructure/traefik/`.
 
-These two will conflict if both are deployed.
+These two would conflict if both were deployed.
 
-## The Solution
+## The Solution (Completed)
 
-**Disable K3s built-in Traefik** and use the ArgoCD-managed version instead.
+**Disabled K3s built-in Traefik** and use the ArgoCD-managed version instead.
 
 ### Why?
 

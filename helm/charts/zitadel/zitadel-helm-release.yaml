@@ -75,22 +75,9 @@ spec:
     ingress:
       enabled: false
     
-    # Login v2 configuration
+    # Login v2 configuration - disabled for now
     login:
-      enabled: true
-      replicaCount: 2
-      resources:
-        requests:
-          cpu: 50m
-          memory: 128Mi
-        limits:
-          cpu: 250m
-          memory: 256Mi
-      service:
-        type: ClusterIP
-        port: 8080
-      ingress:
-        enabled: false
+      enabled: false
     
     # Init job configuration
     initJob:

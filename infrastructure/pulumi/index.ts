@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import * as random from "@pulumi/random";
 import { createK3sVm } from "./vm";
+import { createDatabaseUser } from "./database-users";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -224,6 +225,35 @@ const zitadelDatabase = new azure.dbforpostgresql.Database("zitadel-db", {
   collation: "en_US.utf8",
 });
 
+// Create dedicated database users with the PostgreSQL provider
+// These are managed declaratively and passwords are stored encrypted in Pulumi state
+const strapiUser = createDatabaseUser("strapi-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: "psqladmin",
+  adminPassword: postgresqlPassword.result,
+  databaseName: "strapi",
+  userName: "strapi_user",
+  databases: [strapiDatabase],
+});
+
+const atlasUser = createDatabaseUser("atlas-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: "psqladmin",
+  adminPassword: postgresqlPassword.result,
+  databaseName: "atlas",
+  userName: "atlas_user",
+  databases: [atlasDatabase],
+});
+
+const zitadelUser = createDatabaseUser("zitadel-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: "psqladmin",
+  adminPassword: postgresqlPassword.result,
+  databaseName: "zitadel",
+  userName: "zitadel_user",
+  databases: [zitadelDatabase],
+});
+
 
 
 
@@ -311,3 +341,11 @@ export const logsContainerName = logsContainer.name;
 // PostgreSQL admin credentials (encrypted in Pulumi state)
 export const postgresqlAdminUsername = pulumi.output("psqladmin");
 export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
+
+// Database user credentials (encrypted in Pulumi state)
+export const strapiDbUsername = pulumi.output(strapiUser.username);
+export const strapiDbPassword = pulumi.secret(strapiUser.password);
+export const atlasDbUsername = pulumi.output(atlasUser.username);
+export const atlasDbPassword = pulumi.secret(atlasUser.password);
+export const zitadelDbUsername = pulumi.output(zitadelUser.username);
+export const zitadelDbPassword = pulumi.secret(zitadelUser.password);

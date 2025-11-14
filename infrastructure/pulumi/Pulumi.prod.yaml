@@ -1,0 +1,12 @@
+# Pulumi Stack Configuration for Production
+# This file references the ESC environment for secrets and configuration
+
+# Import the ESC environment
+# Make sure to create the environment in Pulumi Cloud first
+# See esc/prod.yaml for the environment definition
+environment:
+  - infrastructure-prod
+
+# Stack-specific configuration (if any)
+config: {}
+

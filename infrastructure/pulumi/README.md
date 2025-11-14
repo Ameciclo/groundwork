@@ -32,12 +32,43 @@ pulumi up
 ## 📋 Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
-- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139.0+
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (for auto-detection)
 - Azure Service Principal
 - SSH key pair
+- Pulumi Cloud account (for ESC environments)
 
 ## ⚙️ Setup
+
+### Step 1: Create Pulumi ESC Environment
+
+Pulumi ESC (Environments, Secrets, and Configuration) centralizes all your secrets and configuration.
+
+1. **Login to Pulumi Cloud:**
+   ```bash
+   pulumi login
+   ```
+
+2. **Create the ESC environment:**
+   ```bash
+   # Create the environment
+   pulumi env init <your-org>/infrastructure-prod
+
+   # Edit the environment
+   pulumi env edit <your-org>/infrastructure-prod
+   ```
+
+3. **Copy the contents from `esc/prod.yaml` into the environment editor**
+
+4. **Update the placeholder values:**
+   - Replace `ssh.publicKey` with your actual SSH public key:
+     ```bash
+     cat ~/.ssh/id_rsa.pub
+     ```
+
+5. **Save the environment**
+
+### Step 2: Install Dependencies and Deploy
 
 ### Automated Setup (Recommended)
 
@@ -144,60 +175,74 @@ pulumi destroy                   # ⚠️ Delete everything
 ```
 
 
-## 🔐 PostgreSQL Admin Credentials
+## 🔐 Database Credentials
 
-Pulumi automatically generates a secure random password for the PostgreSQL admin user.
+Pulumi automatically creates database users and generates secure passwords.
 
-### Getting Admin Credentials:
+### Getting Credentials:
 
 ```bash
-# View PostgreSQL admin credentials
+# PostgreSQL admin credentials
 pulumi stack output postgresqlAdminUsername
 pulumi stack output postgresqlAdminPassword --show-secrets
+
+# Application database user credentials
+pulumi stack output strapiDbUsername
+pulumi stack output strapiDbPassword --show-secrets
+
+pulumi stack output atlasDbUsername
+pulumi stack output atlasDbPassword --show-secrets
+
+pulumi stack output zitadelDbUsername
+pulumi stack output zitadelDbPassword --show-secrets
 ```
 
-### Creating Database Users:
+### Using in Kubernetes:
 
-After deployment, SSH into the K3s VM and create dedicated database users:
+Create secrets directly from Pulumi outputs:
 
 ```bash
-# SSH into the VM
-ssh azureuser@$(pulumi stack output k3sPublicIp)
+# For Strapi
+kubectl create secret generic strapi-db-credentials \
+  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
+  --from-literal=database=strapi \
+  --from-literal=username=$(pulumi stack output strapiDbUsername) \
+  --from-literal=password=$(pulumi stack output strapiDbPassword --show-secrets) \
+  -n strapi
 
-# Get the admin password
-ADMIN_PASSWORD=$(pulumi stack output postgresqlAdminPassword --show-secrets)
+# For Atlas
+kubectl create secret generic atlas-db-credentials \
+  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
+  --from-literal=database=atlas \
+  --from-literal=username=$(pulumi stack output atlasDbUsername) \
+  --from-literal=password=$(pulumi stack output atlasDbPassword --show-secrets) \
+  -n atlas
 
-# Create database users
-PGSSLMODE=require PGPASSWORD="$ADMIN_PASSWORD" psql \
-  -h $(pulumi stack output postgresqlServerFqdn) \
-  -U psqladmin \
-  -d postgres \
-  -c "CREATE USER strapi_user WITH PASSWORD 'your-secure-password';"
-
-# Grant permissions
-PGSSLMODE=require PGPASSWORD="$ADMIN_PASSWORD" psql \
-  -h $(pulumi stack output postgresqlServerFqdn) \
-  -U psqladmin \
-  -d strapi \
-  -c "GRANT ALL PRIVILEGES ON DATABASE strapi TO strapi_user;"
+# For Zitadel
+kubectl create secret generic zitadel-db-credentials \
+  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
+  --from-literal=database=zitadel \
+  --from-literal=username=$(pulumi stack output zitadelDbUsername) \
+  --from-literal=password=$(pulumi stack output zitadelDbPassword --show-secrets) \
+  -n zitadel
 ```
 
-Repeat for `atlas_user` and `zitadel_user`.
+### Or Store in Infisical:
 
-### Store Credentials in Infisical:
-
-1. Create database users with secure passwords
-2. Store credentials in Infisical:
-   - `STRAPI_DB_USERNAME` / `STRAPI_DB_PASSWORD`
-   - `ATLAS_DB_USERNAME` / `ATLAS_DB_PASSWORD`
-   - `ZITADEL_DB_USERNAME` / `ZITADEL_DB_PASSWORD`
+1. Get credentials using `pulumi stack output`
+2. Store in Infisical:
+   - `STRAPI_DB_HOST`, `STRAPI_DB_USERNAME`, `STRAPI_DB_PASSWORD`
+   - `ATLAS_DB_HOST`, `ATLAS_DB_USERNAME`, `ATLAS_DB_PASSWORD`
+   - `ZITADEL_DB_HOST`, `ZITADEL_DB_USERNAME`, `ZITADEL_DB_PASSWORD`
 3. Use External Secrets Operator to sync to Kubernetes
 
 ### Security Benefits:
 
-✅ **Auto-Generated Admin Password**: Secure 32-character random password
-✅ **Encrypted Storage**: Password stored encrypted in Pulumi state
-✅ **Manual User Creation**: Full control over database user permissions
-✅ **Separation of Concerns**: Infrastructure separate from application credentials
+✅ **Fully Automated**: Database users created automatically
+✅ **Secure Passwords**: Auto-generated 32-character random passwords
+✅ **Encrypted Storage**: All passwords stored encrypted in Pulumi state
+✅ **Least Privilege**: Each app has its own database user
+✅ **Declarative**: Infrastructure as Code for database access control
+✅ **Centralized Secrets**: ESC manages all configuration and secrets
 
 > 💡 **Tip**: Always run `pulumi preview` before `pulumi up`

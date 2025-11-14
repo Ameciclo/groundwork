@@ -72,7 +72,7 @@ export function createK3sVm(
       vmSize: "Standard_B2as_v2",
     },
     osProfile: {
-      computerName: "k3s-vm",
+      computerName: "ameciclo-k3s-vm", // Must match existing (cannot rename)
       adminUsername: "azureuser",
       linuxConfiguration: {
         disablePasswordAuthentication: true,

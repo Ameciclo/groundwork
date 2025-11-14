@@ -23,7 +23,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
 # - 4 GB RAM
 # - 32 GB storage
 # - Cost: ~$24.70/month
-# - Perfect for Kong, Atlas, Kestra
+# - Perfect for Strapi, Atlas, Zitadel
 resource "azurerm_postgresql_flexible_server" "postgresql" {
   name                   = var.postgresql_server_name
   location               = azurerm_resource_group.ameciclo.location
@@ -49,7 +49,7 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   ]
 }
 
-# PostgreSQL Database
+# PostgreSQL Databases
 resource "azurerm_postgresql_flexible_server_database" "atlas" {
   name      = "atlas"
   server_id = azurerm_postgresql_flexible_server.postgresql.id
@@ -57,8 +57,15 @@ resource "azurerm_postgresql_flexible_server_database" "atlas" {
   collation = "en_US.utf8"
 }
 
-resource "azurerm_postgresql_flexible_server_database" "kong" {
-  name      = "kong"
+resource "azurerm_postgresql_flexible_server_database" "strapi" {
+  name      = "strapi"
+  server_id = azurerm_postgresql_flexible_server.postgresql.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}
+
+resource "azurerm_postgresql_flexible_server_database" "zitadel" {
+  name      = "zitadel"
   server_id = azurerm_postgresql_flexible_server.postgresql.id
   charset   = "UTF8"
   collation = "en_US.utf8"

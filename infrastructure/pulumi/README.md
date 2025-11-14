@@ -177,72 +177,70 @@ pulumi destroy                   # ⚠️ Delete everything
 
 ## 🔐 Database Credentials
 
-Pulumi automatically creates database users and generates secure passwords.
-
-### Getting Credentials:
+### Getting Admin Credentials:
 
 ```bash
 # PostgreSQL admin credentials
 pulumi stack output postgresqlAdminUsername
 pulumi stack output postgresqlAdminPassword --show-secrets
-
-# Application database user credentials
-pulumi stack output strapiDbUsername
-pulumi stack output strapiDbPassword --show-secrets
-
-pulumi stack output atlasDbUsername
-pulumi stack output atlasDbPassword --show-secrets
-
-pulumi stack output zitadelDbUsername
-pulumi stack output zitadelDbPassword --show-secrets
+pulumi stack output postgresqlServerFqdn
 ```
+
+### Creating Database Users:
+
+The PostgreSQL server is **private** (VNet-only access). Database users must be created from the K3s VM:
+
+**Step 1: SSH into the K3s VM**
+```bash
+ssh azureuser@$(pulumi stack output k3sPublicIp)
+```
+
+**Step 2: Copy the database user creation script**
+```bash
+# On your local machine
+scp scripts/create-database-users.sh azureuser@$(pulumi stack output k3sPublicIp):~/
+```
+
+**Step 3: Run the script on the VM**
+```bash
+# On the K3s VM
+chmod +x create-database-users.sh
+POSTGRES_ADMIN_PASSWORD='<admin-password>' ./create-database-users.sh
+```
+
+The script will:
+- ✅ Create database users: `strapi_user`, `atlas_user`, `zitadel_user`
+- ✅ Generate secure random passwords
+- ✅ Grant all necessary permissions
+- ✅ Display credentials to save
+
+**Step 4: Save credentials securely**
+
+Store the generated credentials in Infisical or your secrets manager:
+- `STRAPI_DB_HOST`, `STRAPI_DB_USERNAME`, `STRAPI_DB_PASSWORD`
+- `ATLAS_DB_HOST`, `ATLAS_DB_USERNAME`, `ATLAS_DB_PASSWORD`
+- `ZITADEL_DB_HOST`, `ZITADEL_DB_USERNAME`, `ZITADEL_DB_PASSWORD`
 
 ### Using in Kubernetes:
 
-Create secrets directly from Pulumi outputs:
+Create secrets from your secrets manager or manually:
 
 ```bash
 # For Strapi
 kubectl create secret generic strapi-db-credentials \
-  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
+  --from-literal=host=ameciclo-postgres.postgres.database.azure.com \
   --from-literal=database=strapi \
-  --from-literal=username=$(pulumi stack output strapiDbUsername) \
-  --from-literal=password=$(pulumi stack output strapiDbPassword --show-secrets) \
+  --from-literal=username=strapi_user \
+  --from-literal=password='<password-from-script>' \
   -n strapi
-
-# For Atlas
-kubectl create secret generic atlas-db-credentials \
-  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
-  --from-literal=database=atlas \
-  --from-literal=username=$(pulumi stack output atlasDbUsername) \
-  --from-literal=password=$(pulumi stack output atlasDbPassword --show-secrets) \
-  -n atlas
-
-# For Zitadel
-kubectl create secret generic zitadel-db-credentials \
-  --from-literal=host=$(pulumi stack output postgresqlServerFqdn) \
-  --from-literal=database=zitadel \
-  --from-literal=username=$(pulumi stack output zitadelDbUsername) \
-  --from-literal=password=$(pulumi stack output zitadelDbPassword --show-secrets) \
-  -n zitadel
 ```
-
-### Or Store in Infisical:
-
-1. Get credentials using `pulumi stack output`
-2. Store in Infisical:
-   - `STRAPI_DB_HOST`, `STRAPI_DB_USERNAME`, `STRAPI_DB_PASSWORD`
-   - `ATLAS_DB_HOST`, `ATLAS_DB_USERNAME`, `ATLAS_DB_PASSWORD`
-   - `ZITADEL_DB_HOST`, `ZITADEL_DB_USERNAME`, `ZITADEL_DB_PASSWORD`
-3. Use External Secrets Operator to sync to Kubernetes
 
 ### Security Benefits:
 
-✅ **Fully Automated**: Database users created automatically
+✅ **Private Network**: PostgreSQL only accessible from VNet
 ✅ **Secure Passwords**: Auto-generated 32-character random passwords
-✅ **Encrypted Storage**: All passwords stored encrypted in Pulumi state
+✅ **Encrypted Admin Password**: Stored encrypted in Pulumi state
 ✅ **Least Privilege**: Each app has its own database user
-✅ **Declarative**: Infrastructure as Code for database access control
-✅ **Centralized Secrets**: ESC manages all configuration and secrets
+✅ **Manual Control**: Full control over database user creation
 
 > 💡 **Tip**: Always run `pulumi preview` before `pulumi up`

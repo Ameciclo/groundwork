@@ -1,7 +1,7 @@
 ---
 # Tailscale Subnet Router
-# This advertises K3s pod and service networks to your Tailscale network
-# Allows direct access to pods and services from your local machine
+# This advertises K3s networks to your Tailscale network
+# Allows direct access to VMs, pods, and services from your local machine
 #
 # After deployment, accept routes on your local machine:
 #   sudo tailscale up --accept-routes
@@ -17,6 +17,7 @@ metadata:
 spec:
   subnetRouter:
     advertiseRoutes:
+      - 10.10.0.0/16  # Azure VNet CIDR (includes K3s VM at 10.10.1.4)
       - 10.42.0.0/16  # K3s pod CIDR
       - 10.43.0.0/16  # K3s service CIDR
   hostname: k3s-subnet-router

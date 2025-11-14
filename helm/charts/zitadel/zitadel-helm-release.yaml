@@ -23,6 +23,10 @@ spec:
       # IMPORTANT: Change this in production and store securely
       masterkeySecretName: zitadel-masterkey
 
+      # Reference secret for database config
+      configSecretName: zitadel-db-config
+      configSecretKey: config.yaml
+
       # Configure external domain
       configmapConfig:
         ExternalDomain: zitadel.armadillo-hamal.ts.net
@@ -84,35 +88,8 @@ spec:
     # Init job configuration
     initJob:
       activeDeadlineSeconds: 600
-      env:
-        - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: zitadel-db-password
-              key: DATABASE_PASSWORD
-        - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: zitadel-db-password
-              key: DATABASE_PASSWORD
 
     # Setup job configuration
     setupJob:
       activeDeadlineSeconds: 1200
-      env:
-        - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: zitadel-db-password
-              key: DATABASE_PASSWORD
-        - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: zitadel-db-password
-              key: DATABASE_PASSWORD
-      annotations:
-        helm.sh/hook-delete-policy: before-hook-creation
-
-    # Load environment variables from secret
-    envVarsSecret: zitadel-db-password
 

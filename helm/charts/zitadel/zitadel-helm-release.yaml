@@ -13,6 +13,10 @@ spec:
   version: 8.5.1  # Use v8 which includes Zitadel v2.x with built-in login UI
   targetNamespace: zitadel
   valuesContent: |-
+    # Set Zitadel app version explicitly
+    image:
+      tag: v2.62.1  # Last v2.x version with built-in login UI
+
     # Zitadel configuration
     zitadel:
       # Master key for encryption

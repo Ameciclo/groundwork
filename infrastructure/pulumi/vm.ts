@@ -46,7 +46,7 @@ export function createK3sVm(
     location: args.location,
     ipConfigurations: [
       {
-        name: "internal",
+        name: "testconfiguration1", // Must match existing IP config name (cannot rename primary)
         subnet: {
           id: args.subnetId,
         },

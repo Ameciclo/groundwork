@@ -154,6 +154,12 @@
         group: "{{ ansible_user }}"
         mode: "0755"
 
+    - name: Fix kubeconfig permissions for non-root access
+      file:
+        path: "{{ kubeconfig_path }}"
+        mode: "0644"
+      become: true
+
     - name: Copy kubeconfig to user home
       shell: |
         cp {{ kubeconfig_path }} {{ user_kubeconfig_path }}

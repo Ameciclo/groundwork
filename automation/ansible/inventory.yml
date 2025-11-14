@@ -1,0 +1,22 @@
+---
+# Ansible Inventory for K3s VM
+# This inventory is dynamically populated from Pulumi outputs
+#
+# Usage:
+#   ansible-playbook -i automation/ansible/inventory.yml automation/ansible/k3s-bootstrap-playbook.yml
+
+all:
+  hosts:
+    k3s-vm:
+      ansible_host: 135.234.25.108  # Update with: pulumi stack output k3sPublicIp
+      ansible_user: azureuser
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa
+      ansible_python_interpreter: /usr/bin/python3
+      
+      # VM-specific variables
+      private_ip: 10.10.1.4
+      
+  vars:
+    # Global variables
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+

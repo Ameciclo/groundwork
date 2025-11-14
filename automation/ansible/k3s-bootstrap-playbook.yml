@@ -24,7 +24,7 @@
     k3s_version: "v1.32.4+k3s1"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
     user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
-    pod_cidr: "10.10.0.0/16"
+    pod_cidr: "10.42.0.0/16"      # Changed from 10.10.0.0/16 to avoid VNet conflict
     service_cidr: "10.43.0.0/16"
 
     # Component Versions
@@ -73,6 +73,8 @@
           - ca-certificates
           - gnupg
           - lsb-release
+          - postgresql-client  # For database access
+          - btop                # System monitor
         state: present
 
     # ========== K3s Installation ==========
@@ -365,20 +367,25 @@
           {{ argocd_status.stdout }}
 
           ArgoCD Access:
-          - URL: https://argocd.armadillo-hamal.ts.net
+          - URL: https://argocd.<your-tailnet>.ts.net
           - Username: admin
           - Password: {{ argocd_password.stdout }}
 
           Kubeconfig: {{ user_kubeconfig_path }}
 
           Important Notes:
-          - K3s API is accessible via private IP (10.10.1.4:6443) through Tailscale
-          - Tailscale subnet routes (10.10.0.0/16, 10.43.0.0/16) are advertised
+          - K3s API is accessible via private IP ({{ private_ip }}:6443) through Tailscale
+          - Tailscale subnet routes ({{ pod_cidr }}, {{ service_cidr }}) are advertised
           - Accept routes on your local machine: sudo tailscale up --accept-routes
 
           Next steps:
           1. Accept Tailscale subnet routes on your local machine
-          2. Access ArgoCD at https://argocd.armadillo-hamal.ts.net
+          2. Access ArgoCD at https://argocd.<your-tailnet>.ts.net
           3. Configure Git repository in ArgoCD
           4. Create Applications for your services
+
+          Database Access:
+          - PostgreSQL: ameciclo-postgres.postgres.database.azure.com
+          - Get admin password: pulumi stack output postgresqlAdminPassword --show-secrets
+          - psql client is installed and ready to use
           ========================================

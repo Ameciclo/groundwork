@@ -94,7 +94,7 @@ export function createK3sVm(
         version: "latest",
       },
       osDisk: {
-        name: `${args.projectName}-k3s-osdisk`,
+        name: "ameciclo-k3s-vm_OsDisk_1_6fdbe0eb5d384f0cb44764648e92d771", // Must match existing disk (cannot rename)
         caching: "ReadWrite",
         createOption: "FromImage",
         managedDisk: {

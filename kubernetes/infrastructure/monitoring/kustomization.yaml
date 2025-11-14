@@ -9,6 +9,8 @@ resources:
   - traefik-metrics-service.yaml
   - grafana-ingress.yaml
   - traefik-dashboard-configmap.yaml
+  - uptime-kuma-deployment.yaml
+  - uptime-kuma-ingress.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: monitoring

@@ -14,10 +14,17 @@ This PR adds a complete monitoring solution to the Ameciclo infrastructure using
   - Automatic scraping of Traefik, K8s components, and nodes
 
 - **Grafana** - Visualization and dashboards
-  - Accessible via Tailscale: `https://grafana.armadillo-hamal.ts.net`
+  - Accessible via Tailscale: `https://grafana.armadillo-hamal.ts.net` (Private)
   - Pre-configured Traefik dashboard
   - Default Kubernetes dashboards
   - Default credentials: `admin/admin` (change on first login!)
+
+- **Uptime Kuma** - Uptime monitoring and status page
+  - Public URL: `https://status.az.ameciclo.org`
+  - Monitor HTTP(s), TCP, DNS, Ping
+  - Beautiful public status pages
+  - Notifications (Telegram, Slack, email, etc.)
+  - First user becomes admin
 
 - **AlertManager** - Alert routing and notifications
   - Ready for Telegram/Slack integration
@@ -64,11 +71,14 @@ This PR adds a complete monitoring solution to the Ameciclo infrastructure using
 ```
 kubernetes/infrastructure/monitoring/
 ├── README.md                           # Comprehensive monitoring docs
+├── UPTIME_KUMA.md                      # Uptime Kuma setup guide
 ├── namespace.yaml                      # monitoring namespace
 ├── kube-prometheus-stack.yaml          # Main Helm chart
 ├── traefik-servicemonitor.yaml         # Traefik metrics scraping
 ├── traefik-metrics-service.yaml        # Traefik metrics service
 ├── grafana-ingress.yaml                # Tailscale ingress for Grafana
+├── uptime-kuma-deployment.yaml         # Uptime Kuma deployment
+├── uptime-kuma-ingress.yaml            # Public Traefik ingress for Uptime Kuma
 ├── traefik-dashboard-configmap.yaml    # Pre-configured dashboard
 └── kustomization.yaml                  # Kustomize config
 
@@ -97,10 +107,15 @@ kubectl apply -k kubernetes/infrastructure/monitoring/
 
 ## 🔐 Access
 
-**Grafana Dashboard:**
+**Grafana Dashboard (Private - Tailscale):**
 - URL: `https://grafana.armadillo-hamal.ts.net`
 - Username: `admin`
 - Password: `admin` (⚠️ change immediately!)
+
+**Uptime Kuma Status Page (Public):**
+- URL: `https://status.az.ameciclo.org`
+- First-time: Create admin account
+- See [UPTIME_KUMA.md](kubernetes/infrastructure/monitoring/UPTIME_KUMA.md) for setup
 
 **Prometheus UI (port-forward):**
 ```bash
@@ -127,10 +142,11 @@ kubectl port-forward -n monitoring svc/prometheus-prometheus 9090:9090
 |-----------|-----|--------|---------|
 | Prometheus | 200m-1000m | 512Mi-2Gi | 15Gi |
 | Grafana | 100m-500m | 256Mi-512Mi | 5Gi |
+| Uptime Kuma | 100m-500m | 128Mi-512Mi | 2Gi |
 | AlertManager | 50m-200m | 128Mi-256Mi | 2Gi |
 | Node Exporter | 50m | 64Mi | - |
 | Kube State Metrics | 50m | 128Mi | - |
-| **Total** | **~450m-2000m** | **~1Gi-3Gi** | **22Gi** |
+| **Total** | **~550m-2500m** | **~1.2Gi-3.5Gi** | **24Gi** |
 
 ## 🔍 Example Queries
 

@@ -6,11 +6,12 @@ Complete guide to deploy and use the Prometheus + Grafana monitoring stack.
 
 After following this guide, you'll have:
 
-✅ **Prometheus** - Collecting metrics from Traefik and Kubernetes  
-✅ **Grafana** - Beautiful dashboards for visualization  
-✅ **Traefik Metrics** - Request rates, errors, latency, etc.  
-✅ **K8s Metrics** - Cluster health, resource usage  
-✅ **Alerts** - Get notified when things go wrong  
+✅ **Prometheus** - Collecting metrics from Traefik and Kubernetes
+✅ **Grafana** - Beautiful dashboards for visualization
+✅ **Uptime Kuma** - Public status page and uptime monitoring
+✅ **Traefik Metrics** - Request rates, errors, latency, etc.
+✅ **K8s Metrics** - Cluster health, resource usage
+✅ **Alerts** - Get notified when things go wrong
 
 ## 📋 Prerequisites
 
@@ -36,6 +37,7 @@ kubectl get pods -n monitoring -w
 Wait for all pods to be running (takes ~3-5 minutes):
 - `prometheus-prometheus-0`
 - `prometheus-grafana-xxx`
+- `uptime-kuma-xxx`
 - `prometheus-alertmanager-0`
 - `prometheus-kube-state-metrics-xxx`
 - `prometheus-node-exporter-xxx`
@@ -50,7 +52,18 @@ Wait for all pods to be running (takes ~3-5 minutes):
 
 ⚠️ **Change the password immediately!**
 
-### Step 3: Explore Dashboards
+### Step 3: Setup Uptime Kuma
+
+**URL:** `https://status.az.ameciclo.org`
+
+1. Visit the URL (first time only)
+2. Create admin account
+3. Set a strong password
+4. Add monitors for your services (see [UPTIME_KUMA.md](../kubernetes/infrastructure/monitoring/UPTIME_KUMA.md))
+
+**Note:** Make sure DNS is configured to point `status.az.ameciclo.org` to your K3s LoadBalancer IP.
+
+### Step 4: Explore Grafana Dashboards
 
 1. **Traefik Overview** - Custom dashboard for Traefik metrics
 2. **Kubernetes / Compute Resources / Cluster** - Cluster overview

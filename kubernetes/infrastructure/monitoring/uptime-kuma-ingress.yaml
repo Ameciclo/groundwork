@@ -1,0 +1,51 @@
+---
+# Uptime Kuma Public Ingress via Traefik
+# Public status page accessible at https://status.az.ameciclo.org
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-kuma
+  namespace: monitoring
+  annotations:
+    # Let's Encrypt certificate
+    cert-manager.io/cluster-issuer: letsencrypt
+    
+    # Rate limiting to prevent abuse
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-uptime-kuma-ratelimit@kubernetescrd
+  labels:
+    app.kubernetes.io/name: uptime-kuma
+    app.kubernetes.io/component: ingress
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: status.az.ameciclo.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+  tls:
+    - hosts:
+        - status.az.ameciclo.org
+      secretName: uptime-kuma-tls
+---
+# Rate limiting middleware
+# Prevents abuse while allowing normal usage
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: uptime-kuma-ratelimit
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: uptime-kuma
+    app.kubernetes.io/component: middleware
+spec:
+  rateLimit:
+    average: 30
+    burst: 60
+    period: 1m
+

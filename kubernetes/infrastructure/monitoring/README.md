@@ -16,6 +16,12 @@ Complete monitoring solution for the Ameciclo Kubernetes cluster.
   - Default K8s dashboards
   - Accessible via Tailscale
 
+- **Uptime Kuma** - Uptime monitoring and status page
+  - Monitor HTTP(s), TCP, DNS, Ping
+  - Beautiful status pages
+  - Notifications (Telegram, Slack, email, etc.)
+  - Accessible via Tailscale (optional public access)
+
 - **AlertManager** - Alert routing and notifications
   - Can integrate with Telegram, Slack, email
   - 2GB storage for alert history
@@ -54,13 +60,22 @@ kubectl apply -k kubernetes/infrastructure/monitoring/
 
 ### Grafana Dashboard
 
-**URL:** `https://grafana.armadillo-hamal.ts.net`
+**URL:** `https://grafana.armadillo-hamal.ts.net` (Private - Tailscale only)
 
 **Default Credentials:**
 - Username: `admin`
 - Password: `admin`
 
 ⚠️ **Change the password immediately after first login!**
+
+### Uptime Kuma Status Page
+
+**URL:** `https://status.az.ameciclo.org` (Public)
+
+**First-time Setup:**
+- Visit the URL and create admin account
+- First user becomes admin
+- See [UPTIME_KUMA.md](UPTIME_KUMA.md) for detailed setup guide
 
 ### Prometheus UI
 
@@ -166,10 +181,11 @@ spec:
 |-----------|-------------|----------------|---------|
 | Prometheus | 200m | 512Mi | 15Gi |
 | Grafana | 100m | 256Mi | 5Gi |
+| Uptime Kuma | 100m | 128Mi | 2Gi |
 | AlertManager | 50m | 128Mi | 2Gi |
 | Node Exporter | 50m | 64Mi | - |
 | Kube State Metrics | 50m | 128Mi | - |
-| **Total** | **~450m** | **~1Gi** | **22Gi** |
+| **Total** | **~550m** | **~1.2Gi** | **24Gi** |
 
 ## 🔧 Configuration
 

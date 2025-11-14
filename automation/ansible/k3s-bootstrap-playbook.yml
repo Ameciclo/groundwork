@@ -24,7 +24,7 @@
     k3s_version: "v1.32.4+k3s1"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
     user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
-    pod_cidr: "10.42.0.0/16"      # Changed from 10.10.0.0/16 to avoid VNet conflict
+    pod_cidr: "10.42.0.0/16" # Changed from 10.10.0.0/16 to avoid VNet conflict
     service_cidr: "10.43.0.0/16"
 
     # Component Versions
@@ -37,9 +37,9 @@
     tailscale_namespace: "tailscale"
 
     # Optional Components (set to false to skip installation)
-    install_tailscale_operator: true
+    install_tailscale_operator: true   # Bootstrap only - ArgoCD manages configuration
     install_argocd: true
-    install_tailscale_subnet_router: true
+    install_tailscale_resources: false  # ArgoCD will manage ingresses and subnet routers
 
   pre_tasks:
     - name: Validate required environment variables
@@ -73,8 +73,8 @@
           - ca-certificates
           - gnupg
           - lsb-release
-          - postgresql-client  # For database access
-          - btop                # System monitor
+          - postgresql-client
+          - btop
         state: present
 
     # ========== K3s Installation ==========
@@ -231,25 +231,10 @@
       changed_when: false
       when: install_tailscale_operator
 
-    # ========== Tailscale Subnet Router Setup ==========
-    - name: Create Tailscale Connector for subnet routing
-      shell: |
-        export KUBECONFIG={{ kubeconfig_path }}
-        cat <<'EOF' | /usr/local/bin/k3s kubectl apply -f -
-        apiVersion: tailscale.com/v1alpha1
-        kind: Connector
-        metadata:
-          name: k3s-subnet-router
-          namespace: {{ tailscale_namespace }}
-        spec:
-          subnetRouter:
-            advertiseRoutes:
-              - {{ pod_cidr }}
-              - {{ service_cidr }}
-          hostname: k3s-subnet-router
-        EOF
-      changed_when: false
-      when: install_tailscale_operator and install_tailscale_subnet_router
+    # ========== Tailscale Resources (Managed by ArgoCD) ==========
+    # Note: Tailscale Ingress and Subnet Router are now managed by ArgoCD
+    # This allows GitOps management of Tailscale configuration
+    # See: kubernetes/infrastructure/tailscale/ for ArgoCD-managed resources
 
     # ========== ArgoCD Installation ==========
     - name: Create ArgoCD namespace
@@ -286,29 +271,10 @@
       changed_when: false
       when: install_argocd
 
-    # ========== ArgoCD Ingress Setup ==========
-    - name: Create ArgoCD Tailscale Ingress
-      shell: |
-        export KUBECONFIG={{ kubeconfig_path }}
-        cat <<'EOF' | /usr/local/bin/k3s kubectl apply -f -
-        apiVersion: networking.k8s.io/v1
-        kind: Ingress
-        metadata:
-          name: argocd
-          namespace: {{ argocd_namespace }}
-        spec:
-          ingressClassName: tailscale
-          defaultBackend:
-            service:
-              name: argocd-server
-              port:
-                number: 443
-          tls:
-            - hosts:
-                - argocd
-        EOF
-      changed_when: false
-      when: install_argocd and install_tailscale_operator
+    # ========== ArgoCD Ingress (Managed by ArgoCD) ==========
+    # Note: ArgoCD Tailscale Ingress is now managed by ArgoCD itself
+    # This allows GitOps management and self-healing
+    # See: kubernetes/infrastructure/tailscale/argocd-ingress.yaml
 
     # ========== Verification and Output ==========
     - name: Get K3s version

@@ -20,12 +20,22 @@ kubectl get applications -n argocd
 
 ## 🏗️ What Gets Deployed
 
+### Infrastructure (Pulumi)
 - **🌐 Azure Virtual Network** - Secure networking with K3s and database subnets
 - **🗄️ PostgreSQL Flexible Server** - Private database (Standard_B2s) with 3 databases: strapi, atlas, zitadel
 - **☸️ K3s Kubernetes Cluster** - Lightweight Kubernetes on Ubuntu 22.04 LTS (Standard_B2as_v2)
 - **💾 Blob Storage** - Media, backups, and logs containers
 - **🔒 Network Security** - Firewall rules, private DNS, and SSH-only access
-- **📱 Applications** - Strapi CMS, Atlas APIs, Zitadel Auth, Traefik ingress, ArgoCD GitOps
+
+### Bootstrap (Ansible)
+- **K3s** - Kubernetes installation and configuration
+- **Tailscale Operator** - VPN operator (bootstrap only)
+- **ArgoCD** - GitOps deployment platform
+
+### GitOps (ArgoCD)
+- **Tailscale** - Ingress and subnet router configuration
+- **Applications** - Strapi CMS, Atlas APIs, Zitadel Auth
+- **Infrastructure** - Traefik ingress, Infisical secrets
 
 **💰 Cost**: ~$70-80/month for complete infrastructure
 

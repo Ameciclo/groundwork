@@ -1,0 +1,23 @@
+---
+# Tailscale Subnet Router
+# This advertises K3s pod and service networks to your Tailscale network
+# Allows direct access to pods and services from your local machine
+#
+# After deployment, accept routes on your local machine:
+#   sudo tailscale up --accept-routes
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: k3s-subnet-router
+  namespace: tailscale
+  labels:
+    app.kubernetes.io/name: tailscale-subnet-router
+    app.kubernetes.io/component: networking
+    app.kubernetes.io/managed-by: argocd
+spec:
+  subnetRouter:
+    advertiseRoutes:
+      - 10.42.0.0/16  # K3s pod CIDR
+      - 10.43.0.0/16  # K3s service CIDR
+  hostname: k3s-subnet-router
+

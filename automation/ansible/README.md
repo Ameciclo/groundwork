@@ -53,15 +53,20 @@ cd automation/ansible
 ansible-playbook -i inventory.yml k3s-bootstrap-playbook.yml
 ```
 
-## 📦 What Gets Installed
+## 📦 What Gets Installed (Bootstrap)
+
+Ansible installs the **minimal bootstrap** components:
 
 - ✅ **K3s** v1.32.4+k3s1 - Lightweight Kubernetes
 - ✅ **Helm** v3.14.0 - Package manager
-- ✅ **Tailscale Operator** - Secure networking
+- ✅ **Tailscale Operator** - Secure networking (operator only)
 - ✅ **ArgoCD** v7.3.3 - GitOps deployment
 - ✅ **PostgreSQL Client** - Database access
 - ✅ **btop** - System monitor
 - ✅ **System utilities** - curl, wget, git, jq, etc.
+
+**Note:** Tailscale resources (Ingress, Subnet Router) are managed by ArgoCD, not Ansible.
+This follows GitOps best practices where Ansible bootstraps, ArgoCD manages.
 
 ## 🔧 Configuration
 
@@ -86,7 +91,37 @@ install_tailscale_subnet_router: false
 
 ## 📝 Post-Installation
 
-### Access ArgoCD
+### Step 1: Deploy Tailscale Resources via ArgoCD
+
+After Ansible completes, deploy the Tailscale ArgoCD application:
+
+```bash
+# SSH into the VM
+ssh azureuser@<k3s-ip>
+
+# Deploy Tailscale application
+kubectl apply -f /path/to/groundwork/kubernetes/argocd/infrastructure/tailscale.yaml
+
+# Or from your local machine (if you have kubeconfig)
+kubectl apply -f kubernetes/argocd/infrastructure/tailscale.yaml
+```
+
+This will create:
+- ✅ Tailscale Ingress for ArgoCD
+- ✅ Tailscale Subnet Router
+
+### Step 2: Accept Tailscale Routes
+
+On your local machine:
+```bash
+sudo tailscale up --accept-routes
+```
+
+This allows access to:
+- K3s pods: `10.42.0.0/16`
+- K3s services: `10.43.0.0/16`
+
+### Step 3: Access ArgoCD
 
 1. **Get ArgoCD password**:
    ```bash
@@ -97,17 +132,6 @@ install_tailscale_subnet_router: false
    - URL: `https://argocd.<your-tailnet>.ts.net`
    - Username: `admin`
    - Password: (from step 1)
-
-### Configure Tailscale Routes
-
-On your local machine:
-```bash
-sudo tailscale up --accept-routes
-```
-
-This allows access to:
-- K3s pods: `10.42.0.0/16`
-- K3s services: `10.43.0.0/16`
 
 ### Access K3s API
 

@@ -53,19 +53,49 @@ ansible-playbook -i inventory.yml k3s-bootstrap-playbook.yml
 This will take **~10-15 minutes** and install:
 - ✅ K3s v1.32.4+k3s1
 - ✅ Helm v3.14.0
-- ✅ Tailscale Operator
+- ✅ Tailscale Operator (bootstrap only)
 - ✅ ArgoCD v7.3.3
 - ✅ PostgreSQL client
 - ✅ btop system monitor
 
-### 6. Post-Installation
+**Note:** Tailscale Ingress and Subnet Router are NOT installed by Ansible.
+They will be managed by ArgoCD in the next step.
 
-#### Get ArgoCD Password
+### 6. Deploy Tailscale Resources via ArgoCD
+
+After Ansible completes, deploy Tailscale configuration:
 
 ```bash
-ssh azureuser@$(cd ../../infrastructure/pulumi && pulumi stack output k3sPublicIp) \
-  "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+# SSH into the VM
+ssh azureuser@$(cd ../../infrastructure/pulumi && pulumi stack output k3sPublicIp)
+
+# Deploy Tailscale ArgoCD application
+kubectl apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: kubernetes/infrastructure/tailscale
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
+
+# Wait for Tailscale resources to be created
+kubectl wait --for=condition=Ready connector/k3s-subnet-router -n tailscale --timeout=300s
 ```
+
+### 7. Post-Installation
 
 #### Accept Tailscale Routes
 
@@ -74,14 +104,22 @@ On your local machine:
 sudo tailscale up --accept-routes
 ```
 
+#### Get ArgoCD Password
+
+```bash
+ssh azureuser@$(cd ../../infrastructure/pulumi && pulumi stack output k3sPublicIp) \
+  "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+```
+
 #### Access ArgoCD
 
-1. Find your Tailscale hostname:
+1. Wait for Tailscale Ingress to be ready:
    ```bash
-   ssh azureuser@<k3s-ip> "tailscale status | grep argocd"
+   kubectl get ingress argocd -n argocd
    ```
 
 2. Open in browser: `https://argocd.<your-tailnet>.ts.net`
+
 3. Login:
    - Username: `admin`
    - Password: (from step above)

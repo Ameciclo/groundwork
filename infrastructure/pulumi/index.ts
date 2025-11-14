@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import { createK3sVm } from "./vm";
+import { createDatabaseUser } from "./database-users";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -208,6 +209,40 @@ const strapiDatabase = new azure.dbforpostgresql.Database("strapi-db", {
   collation: "en_US.utf8",
 });
 
+const zitadelDatabase = new azure.dbforpostgresql.Database("zitadel-db", {
+  databaseName: "zitadel",
+  serverName: postgresqlServer.name,
+  resourceGroupName: resourceGroup.name,
+  charset: "UTF8",
+  collation: "en_US.utf8",
+});
+
+// Create dedicated database users for each application
+// These users have limited permissions to only their respective databases
+const strapiUser = createDatabaseUser("strapi-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: config.requireSecret("postgresqlAdminUsername"),
+  adminPassword: config.requireSecret("postgresqlAdminPassword"),
+  databaseName: "strapi",
+  userName: "strapi_user",
+});
+
+const atlasUser = createDatabaseUser("atlas-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: config.requireSecret("postgresqlAdminUsername"),
+  adminPassword: config.requireSecret("postgresqlAdminPassword"),
+  databaseName: "atlas",
+  userName: "atlas_user",
+});
+
+const zitadelUser = createDatabaseUser("zitadel-user", {
+  serverFqdn: postgresqlServer.fullyQualifiedDomainName,
+  adminUsername: config.requireSecret("postgresqlAdminUsername"),
+  adminPassword: config.requireSecret("postgresqlAdminPassword"),
+  databaseName: "zitadel",
+  userName: "zitadel_user",
+});
+
 
 
 
@@ -291,3 +326,11 @@ export const storageAccountPrimaryEndpoints = storageAccount.primaryEndpoints;
 export const mediaContainerName = mediaContainer.name;
 export const backupsContainerName = backupsContainer.name;
 export const logsContainerName = logsContainer.name;
+
+// Database user credentials (marked as secret)
+export const strapiDbUsername = pulumi.output(strapiUser.username);
+export const strapiDbPassword = pulumi.secret(strapiUser.password);
+export const atlasDbUsername = pulumi.output(atlasUser.username);
+export const atlasDbPassword = pulumi.secret(atlasUser.password);
+export const zitadelDbUsername = pulumi.output(zitadelUser.username);
+export const zitadelDbPassword = pulumi.secret(zitadelUser.password);

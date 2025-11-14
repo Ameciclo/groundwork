@@ -1,59 +1,59 @@
 # DNS Configuration for Uptime Kuma
 
-## 📋 Required DNS Record
+## ✅ DNS Already Configured!
 
-To make Uptime Kuma accessible at `https://status.az.ameciclo.org`, you need to configure DNS.
+**Current DNS Setup:**
+- Wildcard A Record: `*.az.ameciclo.org` → `135.234.25.108`
+- This means `status.az.ameciclo.org` automatically resolves to the K3s VM
+- **No additional DNS configuration needed!**
 
-## 🔍 Get K3s LoadBalancer IP
+## 🔍 Verify DNS
 
-First, get the external IP of your Traefik LoadBalancer:
+Check that DNS is working:
 
 ```bash
-# SSH into K3s VM
-ssh azureuser@135.234.25.108
+# Check DNS resolution
+dig status.az.ameciclo.org
 
-# Get Traefik service external IP
-kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+# Or using nslookup
+nslookup status.az.ameciclo.org
 ```
 
-**Expected output:** `10.10.1.4`
+**Expected output:**
+```
+status.az.ameciclo.org. 300 IN A 135.234.25.108
+```
 
-## 🌐 DNS Configuration Options
+## 🌐 How It Works
 
-### Option 1: Azure DNS (Recommended if using Azure)
+**Current DNS Configuration:**
+```
+*.az.ameciclo.org → 135.234.25.108 (K3s VM public IP)
+```
 
-If you manage `ameciclo.org` DNS in Azure:
+**Traffic Flow:**
+```
+User Browser
+    ↓
+status.az.ameciclo.org (DNS resolves to 135.234.25.108)
+    ↓
+Azure VM Public IP (135.234.25.108)
+    ↓
+Traefik Ingress Controller
+    ↓
+Uptime Kuma Service
+    ↓
+Uptime Kuma Pod
+```
 
-1. **Go to Azure Portal**
-2. **Navigate to:** DNS zones → `ameciclo.org`
-3. **Add Record Set:**
-   - Name: `status.az`
-   - Type: `A`
-   - TTL: `300` (5 minutes)
-   - IP Address: `10.10.1.4`
-4. **Save**
-
-### Option 2: External DNS Provider
-
-If you use another DNS provider (Cloudflare, GoDaddy, etc.):
-
-1. **Login to your DNS provider**
-2. **Add A Record:**
-   - Host/Name: `status.az`
-   - Type: `A`
-   - Value/Points to: `10.10.1.4`
-   - TTL: `300` or `Auto`
-3. **Save**
-
-### Option 3: Subdomain Delegation
-
-If `az.ameciclo.org` is a separate zone:
-
-1. **Add A Record in `az.ameciclo.org` zone:**
-   - Name: `status`
-   - Type: `A`
-   - Value: `10.10.1.4`
-   - TTL: `300`
+**What happens:**
+1. User visits `https://status.az.ameciclo.org`
+2. DNS resolves to `135.234.25.108` (K3s VM public IP)
+3. Traffic hits the VM
+4. Traefik ingress controller receives the request
+5. Traefik routes to Uptime Kuma based on hostname
+6. Let's Encrypt provides HTTPS certificate
+7. User sees Uptime Kuma status page
 
 ## ✅ Verify DNS Configuration
 
@@ -83,116 +83,66 @@ Use online tools to check DNS propagation:
 
 Enter: `status.az.ameciclo.org`
 
-## 🔒 Important Notes
+## ✅ Public Access Already Configured!
 
-### Private IP Address
+**Current Setup:**
+- DNS: `*.az.ameciclo.org` → `135.234.25.108` (Public IP)
+- VM: Azure VM with public IP `135.234.25.108`
+- Traefik: Listening on VM, routing based on hostname
+- Uptime Kuma: Publicly accessible at `https://status.az.ameciclo.org`
 
-⚠️ **Note:** `10.10.1.4` is a **private IP address** (RFC 1918).
+**This means:**
+- ✅ **Publicly accessible** - Anyone can visit the status page
+- ✅ **HTTPS enabled** - Let's Encrypt certificate via Traefik
+- ✅ **No VPN required** - Direct internet access
+- ✅ **Rate limited** - Protected against abuse (30 req/min)
 
-This means:
-- ✅ **Works:** If you're on the same network or VPN (Tailscale)
-- ❌ **Doesn't work:** From public internet
+**Security:**
+- Admin panel protected by authentication
+- Status pages can be public or private
+- Rate limiting prevents abuse
+- HTTPS encryption for all traffic
 
-### Making it Publicly Accessible
+## 🎯 Deployment Checklist
 
-To make Uptime Kuma accessible from the public internet, you need:
+After deploying the monitoring stack:
 
-**Option A: Azure Public IP + Load Balancer**
-
-1. Create Azure Public IP
-2. Create Azure Load Balancer
-3. Forward traffic to K3s VM
-4. Update DNS to point to public IP
-
-**Option B: Tailscale Funnel (Easiest)**
-
-Use Tailscale Funnel to expose the service publicly:
-
-```yaml
-# Update uptime-kuma-ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: uptime-kuma
-  namespace: monitoring
-  annotations:
-    tailscale.com/funnel: "true"  # Enable public access
-spec:
-  ingressClassName: tailscale
-  # ... rest of config
-```
-
-Then DNS would point to Tailscale's public endpoint.
-
-**Option C: Cloudflare Tunnel**
-
-Use Cloudflare Tunnel to expose the service:
-- No public IP needed
-- Free tier available
-- DDoS protection included
-
-## 🎯 Current Setup (Private Network)
-
-**Current configuration:**
-- Uptime Kuma: `https://status.az.ameciclo.org`
-- Traefik LoadBalancer: `10.10.1.4` (private)
-- Access: Only from Tailscale VPN or same network
-
-**To access:**
-1. Connect to Tailscale VPN
-2. Accept subnet routes: `sudo tailscale up --accept-routes`
-3. Visit: `https://status.az.ameciclo.org`
-
-## 📝 Recommended Approach
-
-For a **public status page**, I recommend:
-
-### Option: Use Tailscale Funnel
-
-1. **Update ingress to use Tailscale Funnel:**
-   ```yaml
-   apiVersion: networking.k8s.io/v1
-   kind: Ingress
-   metadata:
-     name: uptime-kuma
-     namespace: monitoring
-     annotations:
-       tailscale.com/funnel: "true"
-   spec:
-     ingressClassName: tailscale
-     defaultBackend:
-       service:
-         name: uptime-kuma
-         port:
-           number: 3001
-   ```
-
-2. **Get Tailscale public URL:**
+1. **Verify DNS:**
    ```bash
-   kubectl get ingress uptime-kuma -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+   dig status.az.ameciclo.org
+   # Should return: 135.234.25.108
    ```
 
-3. **Create CNAME record:**
-   - Name: `status.az`
-   - Type: `CNAME`
-   - Value: `<tailscale-hostname>`
+2. **Deploy monitoring stack:**
+   ```bash
+   kubectl apply -f kubernetes/environments/prod/monitoring-app.yaml
+   ```
 
-**Benefits:**
-- ✅ No Azure public IP needed (save costs)
-- ✅ Automatic HTTPS
-- ✅ DDoS protection via Tailscale
-- ✅ Easy to set up
+3. **Wait for pods:**
+   ```bash
+   kubectl get pods -n monitoring -w
+   ```
 
-## 🔧 Alternative: Keep Private, Use Tailscale
+4. **Check ingress:**
+   ```bash
+   kubectl get ingress -n monitoring uptime-kuma
+   # Should show: status.az.ameciclo.org
+   ```
 
-If you want to keep it private (team only):
+5. **Wait for Let's Encrypt certificate:**
+   - Takes 1-2 minutes
+   - Traefik automatically requests certificate
+   - Check: `kubectl get certificate -n monitoring`
 
-1. **Keep current Tailscale ingress**
-2. **Access via:** `https://uptime-kuma.armadillo-hamal.ts.net`
-3. **No DNS configuration needed**
-4. **Only accessible via Tailscale VPN**
+6. **Access Uptime Kuma:**
+   ```bash
+   open https://status.az.ameciclo.org
+   ```
 
-This is more secure but requires VPN access.
+7. **Create admin account:**
+   - First user becomes admin
+   - Set strong password
+   - Enable 2FA (recommended)
 
 ## 📚 Next Steps
 

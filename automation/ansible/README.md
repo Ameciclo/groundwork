@@ -57,7 +57,7 @@ ansible-playbook -i inventory.yml k3s-bootstrap-playbook.yml
 
 Ansible installs the **minimal bootstrap** components:
 
-- ✅ **K3s** v1.32.4+k3s1 - Lightweight Kubernetes
+- ✅ **K3s** v1.32.4+k3s1 - Lightweight Kubernetes (with Traefik disabled)
 - ✅ **Helm** v3.14.0 - Package manager
 - ✅ **Tailscale Operator** - Secure networking (operator only)
 - ✅ **ArgoCD** v7.3.3 - GitOps deployment
@@ -65,7 +65,11 @@ Ansible installs the **minimal bootstrap** components:
 - ✅ **btop** - System monitor
 - ✅ **System utilities** - curl, wget, git, jq, etc.
 
-**Note:** Tailscale resources (Ingress, Subnet Router) are managed by ArgoCD, not Ansible.
+**Note:** The following are managed by ArgoCD, not Ansible:
+- Tailscale resources (Ingress, Subnet Router)
+- Traefik ingress controller (v37.2.0)
+- All applications
+
 This follows GitOps best practices where Ansible bootstraps, ArgoCD manages.
 
 ## 🔧 Configuration

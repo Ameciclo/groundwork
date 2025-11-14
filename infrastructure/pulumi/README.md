@@ -23,7 +23,6 @@ pulumi up
 - **Virtual Network** (`10.10.0.0/16`) with K3s and database subnets
 - **PostgreSQL** (Standard_B2s) with private networking
   - Databases: `atlas`, `strapi`, `zitadel`
-  - Dedicated users: `atlas_user`, `strapi_user`, `zitadel_user` (auto-created)
 - **K3s VM** (Standard_B2as_v2) with Ubuntu 22.04 LTS
 - **Security Groups** for SSH, HTTP, HTTPS access
 - **Private DNS** for database connectivity
@@ -144,62 +143,67 @@ pulumi destroy                   # ⚠️ Delete everything
 ```
 
 
-## 🔐 Database Users & Credentials
+## 🔐 Database Users Setup
 
-Pulumi automatically creates dedicated database users for each application with secure random passwords:
+Pulumi creates the databases, but you need to manually create database users for security and flexibility.
 
-### Created Users:
+### Step 1: Run the Setup Script
+
+After deploying with Pulumi, create dedicated database users:
+
+```bash
+# SSH into the K3s VM
+ssh azureuser@$(pulumi stack output k3sPublicIp)
+
+# Run the database user setup script
+cd /path/to/groundwork/infrastructure/pulumi/scripts
+POSTGRES_ADMIN_PASSWORD='your-admin-password' ./setup-database-users.sh
+```
+
+This creates:
 - **`strapi_user`** - Full access to `strapi` database
 - **`atlas_user`** - Full access to `atlas` database
 - **`zitadel_user`** - Full access to `zitadel` database
 
-### Getting Credentials:
+### Step 2: Store Credentials in Infisical
 
-```bash
-# View all database credentials (passwords are encrypted)
-pulumi stack output
+The script outputs the generated passwords. Store them securely in Infisical:
 
-# Get specific credentials
-pulumi stack output strapiDbUsername
-pulumi stack output strapiDbPassword --show-secrets
+1. Go to your Infisical project
+2. Add these secrets:
+   - `STRAPI_DB_USERNAME` = `strapi_user`
+   - `STRAPI_DB_PASSWORD` = `<generated-password>`
+   - `ATLAS_DB_USERNAME` = `atlas_user`
+   - `ATLAS_DB_PASSWORD` = `<generated-password>`
+   - `ZITADEL_DB_USERNAME` = `zitadel_user`
+   - `ZITADEL_DB_PASSWORD` = `<generated-password>`
 
-pulumi stack output atlasDbUsername
-pulumi stack output atlasDbPassword --show-secrets
+### Step 3: Reference in Kubernetes
 
-pulumi stack output zitadelDbUsername
-pulumi stack output zitadelDbPassword --show-secrets
+Use Infisical's External Secrets Operator to sync credentials to Kubernetes:
+
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: strapi-db-credentials
+  namespace: strapi
+spec:
+  # ... Infisical config ...
+  managedKubeSecretReferences:
+    - secretName: strapi-db-credentials
+      template:
+        data:
+          username: "{{ .STRAPI_DB_USERNAME }}"
+          password: "{{ .STRAPI_DB_PASSWORD }}"
 ```
 
 ### Security Benefits:
 
-✅ **Isolation**: Each app can only access its own database
-✅ **Least Privilege**: Users have only necessary permissions
-✅ **Secure Passwords**: Auto-generated 32-character random passwords
-✅ **Encrypted Storage**: Passwords stored encrypted in Pulumi state
-✅ **Audit Trail**: Clear tracking of which app accesses what
-
-### Using in Kubernetes:
-
-Create secrets with the credentials:
-
-```bash
-# For Strapi
-kubectl create secret generic strapi-db-credentials \
-  --from-literal=username=$(pulumi stack output strapiDbUsername) \
-  --from-literal=password=$(pulumi stack output strapiDbPassword --show-secrets) \
-  -n strapi
-
-# For Atlas
-kubectl create secret generic atlas-db-credentials \
-  --from-literal=username=$(pulumi stack output atlasDbUsername) \
-  --from-literal=password=$(pulumi stack output atlasDbPassword --show-secrets) \
-  -n atlas
-
-# For Zitadel
-kubectl create secret generic zitadel-db-credentials \
-  --from-literal=username=$(pulumi stack output zitadelDbUsername) \
-  --from-literal=password=$(pulumi stack output zitadelDbPassword --show-secrets) \
-  -n zitadel
-```
+✅ **Separation of Concerns**: Infrastructure (Pulumi) separate from credentials (Infisical)
+✅ **Credential Rotation**: Easy to rotate passwords independently
+✅ **Centralized Secrets**: All credentials in one secure location
+✅ **Audit Trail**: Infisical tracks all secret access
+✅ **Least Privilege**: Each app only accesses its own database
 
 > 💡 **Tip**: Always run `pulumi preview` before `pulumi up`

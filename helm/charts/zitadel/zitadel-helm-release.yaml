@@ -10,7 +10,7 @@ metadata:
 spec:
   repo: https://charts.zitadel.com
   chart: zitadel
-  version: 9.12.3
+  version: 8.5.1  # Use v8 which includes Zitadel v2.x with built-in login UI
   targetNamespace: zitadel
   valuesContent: |-
     # Zitadel configuration
@@ -75,22 +75,7 @@ spec:
     ingress:
       enabled: false
     
-    # Login v2 configuration
-    login:
-      enabled: true
-      replicaCount: 2
-      resources:
-        requests:
-          cpu: 50m
-          memory: 128Mi
-        limits:
-          cpu: 250m
-          memory: 256Mi
-      service:
-        type: ClusterIP
-        port: 8080
-      ingress:
-        enabled: false
+    # Login v2 not available in chart v8
     
     # Init job configuration
     initJob:

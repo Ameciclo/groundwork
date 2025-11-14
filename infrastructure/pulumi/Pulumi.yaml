@@ -1,0 +1,21 @@
+name: ameciclo-infrastructure
+runtime: nodejs
+description: Ameciclo Azure infrastructure using Pulumi
+
+template:
+  config:
+    azure-native:location:
+      description: The Azure region to deploy resources
+      default: westus3
+    azure-native:subscriptionId:
+      description: Azure subscription ID
+      secret: true
+    azure-native:clientId:
+      description: Azure client ID (service principal)
+      secret: true
+    azure-native:clientSecret:
+      description: Azure client secret (service principal)
+      secret: true
+    azure-native:tenantId:
+      description: Azure tenant ID
+      secret: true

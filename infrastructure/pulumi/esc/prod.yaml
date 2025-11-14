@@ -1,0 +1,34 @@
+# Pulumi ESC Environment: ameciclo/infrastructure-prod
+# This environment stores all secrets and configuration for the production infrastructure
+#
+# To create this environment in Pulumi Cloud:
+# 1. Go to https://app.pulumi.com/<your-org>/settings/environments
+# 2. Click "Create Environment"
+# 3. Name it: infrastructure-prod
+# 4. Copy the contents of this file into the environment editor
+# 5. Update the placeholder values with your actual secrets
+
+values:
+  # SSH Configuration
+  ssh:
+    # Your SSH public key for VM access
+    # Get it with: cat ~/.ssh/id_rsa.pub
+    publicKey:
+      fn::secret: "ssh-rsa AAAAB3NzaC1yc2E... your-email@example.com"
+
+  # Azure Configuration
+  azure:
+    location: "westus3"
+    projectName: "ameciclo"
+    environment: "production"
+
+  # Expose these values to Pulumi IaC stacks
+  pulumiConfig:
+    # SSH public key for VM access
+    adminSshPublicKey: ${ssh.publicKey}
+
+    # Azure configuration
+    location: ${azure.location}
+    projectName: ${azure.projectName}
+    environment: ${azure.environment}
+

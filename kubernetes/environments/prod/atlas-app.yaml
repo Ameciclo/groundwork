@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: atlas
+  namespace: argocd
+  annotations:
+    # Enhanced Telegram notifications
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-running.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-status-unknown.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: kubernetes/applications/atlas
+    kustomize: {}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: atlas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+  revisionHistoryLimit: 10
+

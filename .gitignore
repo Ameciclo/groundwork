@@ -1,14 +1,32 @@
-# Terraform files
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-terraform.tfvars
+# Pulumi
+.pulumi/
+Pulumi.*.yaml
+!Pulumi.prod.yaml
 
-# Docker stack environment files
-stacks/**/.env
-!stacks/kestra/.env
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+*.tsbuildinfo
+
+# Build artifacts and temporary directories
+infrastructure/terraform/
+infrastructure/pulumi/node_modules/
 
 # Helm chart dependencies
-helm/charts/*/charts/
-helm/charts/*/Chart.lock
+kubernetes/*/charts/
+kubernetes/*/Chart.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Credentials (NEVER commit these!)
+credentials.json
+secrets.json
+*.pem
+*.key
+*.p12
+*.pfx

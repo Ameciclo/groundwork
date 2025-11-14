@@ -4,6 +4,8 @@
 
 This document describes how Telegram notifications are configured for ArgoCD deployments using the Infisical Operator for secure secret management.
 
+> **Note**: This setup works with our Azure + K3s infrastructure deployed via Pulumi.
+
 ## Architecture
 
 ```
@@ -162,19 +164,40 @@ The system now includes beautifully formatted Telegram notifications with emojis
 
 ## Deployment
 
-### Applying the Enhanced Notifications
+### GitOps Deployment (Recommended)
+
+ArgoCD configuration is now managed via GitOps through the `argocd-config` Application:
+
+1. **Deploy the ArgoCD Config Application:**
+   ```bash
+   kubectl apply -f helm/environments/prod/argocd-config-app.yaml
+   ```
+
+2. **ArgoCD will automatically sync:**
+   - `argocd-notifications-cm` ConfigMap
+   - `argocd-infisical-secretstore` InfisicalSecret
+
+3. **Verify the Application:**
+   ```bash
+   # Check the argocd-config application status
+   kubectl get application argocd-config -n argocd
+
+   # View in ArgoCD UI
+   # https://argocd.armadillo-hamal.ts.net/applications/argocd-config
+   ```
+
+### Manual Deployment (Legacy)
+
+If you need to apply manually (not recommended):
 
 1. **Deploy the ConfigMap:**
    ```bash
-   kubectl apply -f helm/environments/prod/argocd-notifications-cm.yaml
+   kubectl apply -f helm/charts/argocd-config/argocd-notifications-cm.yaml
    ```
 
-2. **Update Application Manifests:**
+2. **Deploy the InfisicalSecret:**
    ```bash
-   kubectl apply -f helm/environments/prod/strapi-app.yaml
-   kubectl apply -f helm/environments/prod/atlas-app.yaml
-   kubectl apply -f helm/environments/prod/atlas-docs-app.yaml
-   kubectl apply -f helm/environments/prod/traefik-app.yaml
+   kubectl apply -f helm/charts/argocd-config/argocd-infisical-secretstore.yaml
    ```
 
 3. **Restart ArgoCD Notifications Controller:**
@@ -199,14 +222,17 @@ kubectl patch application strapi -n argocd -p '{"metadata":{"annotations":{"argo
 
 ## Customization
 
-### Modifying Templates
+### Modifying Templates (GitOps Way)
 
 To customize notification templates:
 
-1. Edit `helm/environments/prod/argocd-notifications-cm.yaml`
+1. Edit `helm/charts/argocd-config/argocd-notifications-cm.yaml`
 2. Modify the template content under `template.app-deployed`, etc.
-3. Apply the changes: `kubectl apply -f helm/environments/prod/argocd-notifications-cm.yaml`
-4. Restart the controller: `kubectl rollout restart deployment argocd-notifications-controller -n argocd`
+3. Commit and push to the repository
+4. ArgoCD will automatically sync the changes
+5. The notifications controller will reload the configuration automatically
+
+**Note:** No manual `kubectl apply` or restart needed! ArgoCD handles it.
 
 ### Template Variables
 

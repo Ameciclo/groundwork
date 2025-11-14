@@ -1,101 +1,189 @@
 # Groundwork - Ameciclo Infrastructure
 
-This repository contains the Terraform configuration for provisioning and managing Ameciclo's cloud infrastructure on DigitalOcean.
+Modern cloud infrastructure for Ameciclo using **Pulumi + Azure + Kubernetes**.
 
-## Overview
-
-Groundwork sets up the following resources on DigitalOcean:
-
-- Virtual Private Cloud (VPC) for network isolation
-- PostgreSQL database cluster
-- Web server droplets (virtual machines)
-- S3-compatible object storage (Spaces)
-
-## Prerequisites
-
-- [Terraform](https://www.terraform.io/downloads.html) (v1.0.0+)
-- DigitalOcean account with API token
-- DigitalOcean Spaces access keys
-- SSH key uploaded to DigitalOcean
-
-## Configuration
-
-Create a `terraform.tfvars` file with the following variables:
-
-```hcl
-digitalocean_token             = "your_digitalocean_api_token"
-digitalocean_spaces_access_key = "your_spaces_access_key"
-digitalocean_spaces_secret_key = "your_spaces_secret_key"
-```
-
-## Usage
-
-Initialize Terraform:
+## 🚀 Quick Start
 
 ```bash
-terraform init
+# 1. Deploy infrastructure
+cd infrastructure/pulumi
+./scripts/setup.sh    # Configure credentials
+pulumi up             # Deploy to Azure
+
+# 2. Access your cluster
+ssh azureuser@$(pulumi stack output k3sPublicIp)
+
+# 3. Check applications
+kubectl get applications -n argocd
 ```
 
-Plan the infrastructure changes:
+## 🏗️ What Gets Deployed
+
+- **🌐 Azure Virtual Network** - Secure networking with K3s and database subnets
+- **🗄️ PostgreSQL Database** - Managed database with private connectivity
+- **☸️ K3s Kubernetes Cluster** - Lightweight Kubernetes on Ubuntu 22.04 LTS
+- **🔒 Network Security** - Firewall rules and private DNS
+- **📱 Applications** - Strapi CMS, Atlas APIs, Traefik ingress, ArgoCD GitOps
+
+**💰 Cost**: ~$80/month for complete infrastructure
+
+## 📁 Repository Structure
+
+```
+groundwork/
+├── 🏗️  infrastructure/           # Infrastructure as Code
+│   ├── pulumi/                  # Pulumi (Azure infrastructure)
+│   └── terraform/               # Terraform (alternative)
+├── ⚙️  automation/               # Deployment automation
+│   └── ansible/                 # Ansible playbooks
+├── ☸️  kubernetes/               # Kubernetes manifests
+│   ├── applications/            # Custom applications (Strapi, Atlas)
+│   ├── infrastructure/          # Platform components (Traefik, ArgoCD)
+│   └── environments/            # Environment configurations
+└── 📚 docs/                     # Documentation & guides
+```
+
+## 📋 Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/)
+- Azure account + Service Principal
+- SSH key pair
+
+## 🔧 Detailed Setup
+
+<details>
+<summary>Click to expand detailed setup instructions</summary>
+
+### 1. Install Dependencies
 
 ```bash
-terraform plan
+cd infrastructure/pulumi
+npm install
 ```
 
-Apply the changes:
+### 2. Configure Azure Credentials
 
 ```bash
-terraform apply
+# Set Azure authentication
+pulumi config set azure-native:subscriptionId --secret YOUR_SUBSCRIPTION_ID
+pulumi config set azure-native:clientId --secret YOUR_CLIENT_ID
+pulumi config set azure-native:clientSecret --secret YOUR_CLIENT_SECRET
+pulumi config set azure-native:tenantId --secret YOUR_TENANT_ID
+
+# Set database credentials
+pulumi config set postgresqlAdminUsername --secret YOUR_DB_USERNAME
+pulumi config set postgresqlAdminPassword --secret YOUR_DB_PASSWORD
+
+# Set SSH key
+pulumi config set adminSshPublicKey --secret "$(cat ~/.ssh/id_rsa.pub)"
 ```
 
-Destroy the infrastructure when no longer needed:
+### 3. Deploy
 
 ```bash
-terraform destroy
+pulumi preview  # Review what will be created
+pulumi up      # Deploy infrastructure
 ```
 
-## Infrastructure Components
+</details>
 
-### Docker Configurations
+## 🏗️ Infrastructure Details
 
-The `docker/` directory contains Docker Compose files for services that run on the infrastructure:
+<details>
+<summary>Azure Resources (click to expand)</summary>
 
-- `docker/portainer/` - Portainer container management UI
-- See `docker/README.md` for more details on Docker configurations
+### 🌐 Virtual Network
 
-### VPC
+- **Address Space**: `10.10.0.0/16`
+- **K3s Subnet**: `10.10.1.0/24`
+- **Database Subnet**: `10.10.2.0/24`
 
-A private network with the IP range `10.10.0.0/16` in the `nyc3` region.
+### 🗄️ PostgreSQL Database
 
-### Database
+- **Tier**: Standard_B2s (2 vCores, 4GB RAM)
+- **Storage**: 32GB, 7-day backups
+- **Networking**: Private only
+- **Databases**: `atlas`
 
-PostgreSQL v16 database cluster with the following specifications:
-- Size: 1 vCPU, 1GB RAM
-- Single node configuration
-- Connected to the private VPC network
-- PostGIS extension enabled for geospatial data support
+### ☸️ K3s Cluster
 
-### Droplets
+- **VM Size**: Standard_B2as_v2 (2 vCores, 4GB RAM)
+- **OS**: Ubuntu 22.04 LTS
+- **Storage**: 30GB Premium SSD
+- **IP**: Static private + public IP
 
-Ubuntu 24.04 virtual machines with:
-- 2 vCPUs, 4GB RAM (AMD)
-- IPv6 enabled
-- Connected to the private VPC network
+### 💾 Blob Storage
 
-### Object Storage
+- **Type**: Standard LRS (Locally Redundant Storage)
+- **Containers**: `media`, `backups`, `logs`
+- **Access**: Private with VNet integration
+- **TLS**: Minimum version 1.2
 
-S3-compatible object storage bucket for storing application assets and data.
+</details>
 
-## Remote State Management
+## 📱 Applications
 
-This project uses Terraform Cloud for remote state management under the "Ameciclo" organization and "groundwork" workspace.
+| Application | Purpose            | URL Pattern              |
+| ----------- | ------------------ | ------------------------ |
+| **Strapi**  | Headless CMS       | `strapi.az.ameciclo.org` |
+| **Atlas**   | Traffic Data APIs  | `atlas.az.ameciclo.org`  |
+| **Traefik** | Ingress Controller | Auto HTTPS               |
+| **ArgoCD**  | GitOps Deployment  | Internal                 |
 
-## Contributing
+### 🔄 GitOps Workflow
 
-1. Fork the repository
+1. **Push** code changes to this repository
+2. **ArgoCD** detects changes automatically
+3. **Deploys** applications to Kubernetes cluster
+4. **Notifies** via Telegram on success/failure
+
+## 💰 Cost Breakdown
+
+| Service    | Tier             | Monthly Cost |
+| ---------- | ---------------- | ------------ |
+| PostgreSQL | Standard_B2s     | ~$25         |
+| VM         | Standard_B2as_v2 | ~$45         |
+| Storage    | Premium SSD      | ~$2          |
+| Networking | Standard         | ~$8          |
+| **Total**  |                  | **~$80**     |
+
+## 🛠️ Management Commands
+
+```bash
+# Infrastructure
+cd infrastructure/pulumi
+pulumi stack output              # View outputs
+pulumi up                       # Update infrastructure
+pulumi destroy                  # ⚠️ Destroy everything
+
+# Applications
+ssh azureuser@$(pulumi stack output k3sPublicIp)  # Access cluster
+kubectl get applications -n argocd                # View apps
+kubectl get pods -A                              # Check status
+```
+
+## 🔒 Security Features
+
+- ✅ **Private Database** - No public access
+- ✅ **SSH Key Auth** - No password authentication
+- ✅ **Network Security Groups** - Restricted port access
+- ✅ **Secret Management** - Pulumi secrets + Infisical
+- ✅ **Auto HTTPS** - Traefik + Let's Encrypt
+
+## 📚 Documentation
+
+- [📖 Detailed Docs](docs/) - Kubernetes guides and concepts
+- [🏗️ Infrastructure Setup](infrastructure/pulumi/README.md) - Pulumi details
+- [☸️ Application Configs](kubernetes/) - Kubernetes manifests
+
+## 🤝 Contributing
+
+1. Fork this repository
 2. Create a feature branch
-3. Submit a pull request
+3. Test in a separate Pulumi stack
+4. Submit a pull request
 
-## License
+---
 
-[Specify the license here]
+**Built with ❤️ by Ameciclo** | [Website](https://ameciclo.org) | [GitHub](https://github.com/Ameciclo)

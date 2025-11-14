@@ -135,6 +135,7 @@ const postgresqlDnsLink = new azure.privatedns.VirtualNetworkLink(
     virtualNetworkLinkName: "postgresql-vnet-link",
     privateZoneName: postgresqlDnsZone.name,
     resourceGroupName: resourceGroup.name,
+    location: "global",
     virtualNetwork: {
       id: vnet.id,
     },

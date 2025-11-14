@@ -1,0 +1,161 @@
+---
+# kube-prometheus-stack Helm Release
+# Includes: Prometheus, Grafana, AlertManager, and various exporters
+# Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  repo: https://prometheus-community.github.io/helm-charts
+  chart: kube-prometheus-stack
+  version: 65.8.1
+  targetNamespace: monitoring
+  
+  valuesContent: |-
+    # Global settings
+    fullnameOverride: prometheus
+    
+    # Prometheus configuration
+    prometheus:
+      enabled: true
+      prometheusSpec:
+        # Retention
+        retention: 15d
+        retentionSize: "10GB"
+        
+        # Storage
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 15Gi
+        
+        # Resources
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        
+        # Service monitors - what to scrape
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        
+        # Additional scrape configs for Traefik
+        additionalScrapeConfigs:
+          - job_name: 'traefik'
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                    - kube-system
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                action: keep
+                regex: traefik
+              - source_labels: [__meta_kubernetes_pod_container_port_name]
+                action: keep
+                regex: metrics
+              - source_labels: [__meta_kubernetes_pod_name]
+                target_label: pod
+              - source_labels: [__meta_kubernetes_namespace]
+                target_label: namespace
+    
+    # Grafana configuration
+    grafana:
+      enabled: true
+      
+      # Admin credentials
+      adminPassword: admin  # Change this in production!
+      
+      # Persistence
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 5Gi
+      
+      # Resources
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      
+      # Grafana configuration
+      grafana.ini:
+        server:
+          root_url: "https://grafana.armadillo-hamal.ts.net"
+        analytics:
+          check_for_updates: false
+          reporting_enabled: false
+        security:
+          allow_embedding: true
+      
+      # Default dashboards
+      defaultDashboardsEnabled: true
+      defaultDashboardsTimezone: America/Recife
+      
+      # Additional dashboards
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
+      
+      # Datasources
+      datasources:
+        datasources.yaml:
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              url: http://prometheus-prometheus:9090
+              access: proxy
+              isDefault: true
+    
+    # AlertManager configuration
+    alertmanager:
+      enabled: true
+      
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 2Gi
+        
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+    
+    # Node exporter - system metrics
+    nodeExporter:
+      enabled: true
+    
+    # Kube-state-metrics - K8s object metrics  
+    kubeStateMetrics:
+      enabled: true
+

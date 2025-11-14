@@ -35,6 +35,7 @@ kubectl get applications -n argocd
 ### GitOps (ArgoCD)
 - **Tailscale** - Ingress and subnet router configuration
 - **Traefik** - Ingress controller v37.2.0 with Let's Encrypt
+- **Monitoring** - Prometheus + Grafana for metrics and dashboards
 - **Applications** - Strapi CMS, Atlas APIs, Zitadel Auth
 - **Infrastructure** - Infisical secrets management
 

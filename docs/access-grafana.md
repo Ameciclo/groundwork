@@ -8,48 +8,66 @@
 - **Username:** `admin`
 - **Password:** `ocnrdla89ZiXp3L5g8PmJTPVSjrjyTx3`
 
-## 📊 View Traefik Dashboard
+## 📊 View Official Traefik Dashboard
 
 1. **Login to Grafana** using the credentials above
 2. **Navigate to Dashboards** → Browse
-3. **Find "Traefik Metrics Dashboard"** in the list
+3. **Find "Traefik Official Kubernetes Dashboard"** in the list
 4. **Click to open** the dashboard
 
 ### Alternative: Direct Dashboard URL
 Once logged in, you can access the dashboard directly:
-`https://grafana.armadillo-hamal.ts.net/d/traefik-metrics/traefik-metrics-dashboard`
+`https://grafana.armadillo-hamal.ts.net/d/traefik-official/traefik-official-kubernetes-dashboard`
 
 ## 📈 What You'll See
 
-The Traefik dashboard includes:
+The official Traefik dashboard includes comprehensive monitoring panels:
 
-### **Panel 1: Request Rate by Service and Status Code**
-- Shows requests per second for each service
-- Broken down by HTTP status codes (200, 302, 404, etc.)
-- Useful for identifying traffic patterns and errors
+### **General Section:**
+- **Traefik Instances** - Number of running Traefik instances
+- **Requests per Entrypoint** - Traffic by entrypoint (web, websecure)
+- **Apdex Score** - Application performance index
+- **HTTP Code Distribution** - Pie chart of response codes
 
-### **Panel 2: Total Requests**
-- Overall request count across all services
-- Single stat showing cumulative requests
+### **Performance Metrics:**
+- **Top Slow Services** - Services with highest response times
+- **Most Requested Services** - Services with highest traffic
+- **SLO Monitoring** - Services failing 300ms and 1200ms SLOs
+
+### **HTTP Details:**
+- **2xx Responses** - Successful requests over time
+- **5xx Responses** - Server errors over time
+- **Other HTTP Codes** - 3xx, 4xx responses
+- **Request/Response Sizes** - Data transfer metrics
+- **Connection Metrics** - Open connections per service/entrypoint
 
 ## 🔍 Available Metrics
 
-The dashboard uses these Traefik metrics:
+The official dashboard uses comprehensive Traefik metrics:
 - `traefik_service_requests_total` - Total requests by service and status code
-- `rate(traefik_service_requests_total[5m])` - Request rate over 5 minutes
+- `traefik_entrypoint_requests_total` - Requests by entrypoint
+- `traefik_service_request_duration_seconds` - Response time histograms
+- `traefik_service_open_connections` - Active connections
+- `traefik_entrypoint_open_connections` - Entrypoint connections
+- `traefik_config_reloads_total` - Configuration reloads
+- `traefik_service_requests_bytes_total` - Request sizes
+- `traefik_service_responses_bytes_total` - Response sizes
 
 ## 🎯 What to Look For
 
 ### **Normal Traffic Patterns:**
 - Steady request rates during business hours
 - Mostly 200 (success) and 302 (redirect) status codes
-- Occasional 404s are normal
+- Apdex score above 0.8 (good user experience)
+- Response times under 300ms for most services
 
 ### **Potential Issues:**
 - **High 4xx rates** - Client errors, check application logs
 - **High 5xx rates** - Server errors, check backend services
+- **Low Apdex score** - Poor user experience, investigate slow services
+- **SLO violations** - Services exceeding 300ms or 1200ms thresholds
 - **Traffic spikes** - May indicate DDoS or viral content
-- **Zero traffic** - Service might be down
+- **Connection buildup** - May indicate connection leaks
 
 ## 🔧 Customizing the Dashboard
 

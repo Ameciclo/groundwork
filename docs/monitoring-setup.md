@@ -60,11 +60,10 @@ Wait for all pods to be running (takes ~3-5 minutes):
 **Login Credentials:**
 - Username: `admin`
 - Password: Use the password generated in Step 1
-- Password: `admin`
 
-⚠️ **Change the password immediately!**
+⚠️ **Save the generated password securely - it's only shown once during secret creation!**
 
-### Step 3: Setup Uptime Kuma
+### Step 4: Setup Uptime Kuma
 
 **URL:** `https://status.az.ameciclo.org`
 
@@ -75,7 +74,7 @@ Wait for all pods to be running (takes ~3-5 minutes):
 
 **Note:** Make sure DNS is configured to point `status.az.ameciclo.org` to your K3s LoadBalancer IP.
 
-### Step 4: Explore Grafana Dashboards
+### Step 5: Explore Grafana Dashboards
 
 1. **Traefik Overview** - Custom dashboard for Traefik metrics
 2. **Kubernetes / Compute Resources / Cluster** - Cluster overview

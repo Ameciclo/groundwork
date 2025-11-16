@@ -3,7 +3,7 @@
 ## 📋 Upgrade Summary
 
 **Chart Version:** `65.8.1` → `79.2.0`  
-**Date:** November 16, 2024  
+**Date:** November 16, 2025
 **Upgrade Type:** Major version jump (14 versions)
 
 ## 🔍 Breaking Changes Identified
@@ -11,23 +11,28 @@
 ### 1. Grafana Admin Password Configuration
 **Status:** ✅ **HANDLED**
 
-**Change:** The `adminPassword` field structure has been updated in newer versions, but the old format is still supported for backward compatibility.
+**Change:** The `adminPassword` field structure has been updated in newer versions. For security, we now use Kubernetes Secrets instead of inline plaintext passwords.
 
 **Action Taken:**
-- Updated to use both `adminUser` and `adminPassword` fields explicitly
-- Maintained the same password (`admin`) for consistency
-- Added note to change in production
+- Removed hardcoded password from Helm values (security risk)
+- Configured Grafana to use Kubernetes Secret for admin credentials
+- Added script to generate strong passwords securely
+- Updated deployment process to require secret creation
 
-**Before:**
+**Before (Insecure - inline plaintext):**
 ```yaml
 adminPassword: admin
 ```
 
-**After:**
+**After (Secure - Kubernetes Secret):**
 ```yaml
-adminUser: admin
-adminPassword: admin  # Change this in production!
+admin:
+  existingSecret: "grafana-admin-credentials"
+  userKey: admin-user
+  passwordKey: admin-password
 ```
+
+**Note:** Inline plaintext passwords (`adminPassword: value`) are insecure and should not be used in production. Always use Kubernetes Secrets for credential management.
 
 ### 2. Chart Version Update
 **Status:** ✅ **COMPLETED**

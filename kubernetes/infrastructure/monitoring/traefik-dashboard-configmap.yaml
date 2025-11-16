@@ -1,14 +1,16 @@
 ---
-# Traefik Grafana Dashboard ConfigMap
-# Pre-configured dashboard for Traefik metrics
-# Based on: https://grafana.com/grafana/dashboards/17346
+# ConfigMap for Traefik Dashboard
+# This will be automatically loaded by Grafana's dashboard provisioning
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: traefik-dashboard
   namespace: monitoring
   labels:
-    grafana_dashboard: "1"
+    grafana_dashboard: "1"  # This label tells Grafana to load this dashboard
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/part-of: monitoring
 data:
   traefik-dashboard.json: |
     {
@@ -32,7 +34,7 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
+                "axisBorderShow": false,
                 "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
@@ -41,10 +43,11 @@ data:
                 "fillOpacity": 10,
                 "gradientMode": "none",
                 "hideFrom": {
+                  "legend": false,
                   "tooltip": false,
-                  "viz": false,
-                  "legend": false
+                  "vis": false
                 },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
                 "pointSize": 5,
@@ -68,6 +71,10 @@ data:
                   {
                     "color": "green",
                     "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
                   }
                 ]
               },
@@ -100,11 +107,15 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(traefik_service_requests_total[5m])) by (service)",
+              "editorMode": "code",
+              "expr": "rate(traefik_service_requests_total[5m])",
+              "instant": false,
+              "legendFormat": "{{service}} - {{code}}",
+              "range": true,
               "refId": "A"
             }
           ],
-          "title": "Requests per Second by Service",
+          "title": "Request Rate by Service and Status Code",
           "type": "timeseries"
         },
         {
@@ -126,16 +137,12 @@ data:
                     "value": null
                   },
                   {
-                    "color": "yellow",
-                    "value": 0.5
-                  },
-                  {
                     "color": "red",
-                    "value": 1
+                    "value": 80
                   }
                 ]
               },
-              "unit": "percentunit"
+              "unit": "short"
             },
             "overrides": []
           },
@@ -147,47 +154,58 @@ data:
           },
           "id": 2,
           "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
-              "values": false,
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "10.0.0",
+          "pluginVersion": "12.2.1",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m])) / sum(rate(traefik_service_requests_total[5m]))",
+              "editorMode": "code",
+              "expr": "sum(traefik_service_requests_total)",
+              "instant": false,
+              "legendFormat": "Total Requests",
+              "range": true,
               "refId": "A"
             }
           ],
-          "title": "Error Rate (5xx)",
-          "type": "gauge"
+          "title": "Total Requests",
+          "type": "stat"
         }
       ],
-      "refresh": "10s",
-      "schemaVersion": 38,
-      "tags": ["traefik"],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": [
+        "traefik",
+        "proxy",
+        "ingress"
+      ],
       "templating": {
         "list": []
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-1h",
         "to": "now"
       },
       "timepicker": {},
-      "timezone": "America/Recife",
-      "title": "Traefik Overview",
-      "uid": "traefik-overview",
+      "timezone": "browser",
+      "title": "Traefik Metrics Dashboard",
+      "uid": "traefik-metrics",
       "version": 1,
       "weekStart": ""
     }
-

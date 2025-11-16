@@ -30,7 +30,8 @@ spec:
     ports.websecure.port: 8443
     ports.traefik.port: 8080
     ports.traefik.expose.default: "true"
-    ports.metrics.port: 9100
+    # Metrics port (8082 is Traefik standard, avoiding 9100 which is Node Exporter)
+    ports.metrics.port: 8082
 
     # Providers (camelCase for v37+)
     providers.kubernetesCRD.enabled: "true"

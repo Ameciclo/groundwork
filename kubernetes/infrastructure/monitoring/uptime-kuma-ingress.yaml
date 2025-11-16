@@ -7,9 +7,10 @@ metadata:
   name: uptime-kuma
   namespace: monitoring
   annotations:
-    # Let's Encrypt certificate
-    cert-manager.io/cluster-issuer: letsencrypt
-    
+    # Traefik TLS with Let's Encrypt
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+
     # Rate limiting to prevent abuse
     traefik.ingress.kubernetes.io/router.middlewares: monitoring-uptime-kuma-ratelimit@kubernetescrd
   labels:

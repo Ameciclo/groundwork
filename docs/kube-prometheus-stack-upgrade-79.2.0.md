@@ -59,6 +59,16 @@ adminPassword: admin  # Change this in production!
 - [x] Breaking changes reviewed and addressed
 - [x] Configuration compatibility verified
 - [x] Backup strategy confirmed (PVCs will persist)
+- [ ] **Grafana admin secret created** (see step 1.1 below)
+
+#### 1.1. Create Grafana Admin Secret (REQUIRED)
+```bash
+# Create the secret with a strong password
+./kubernetes/infrastructure/monitoring/create-grafana-secret.sh
+
+# Verify the secret was created
+kubectl get secret grafana-admin-credentials -n monitoring
+```
 
 ### 2. Upgrade Command
 ```bash

@@ -44,7 +44,13 @@ Complete monitoring solution for the Ameciclo Kubernetes cluster.
 
 ### Via ArgoCD (Recommended)
 
+**⚠️ IMPORTANT: Create Grafana admin secret first!**
+
 ```bash
+# 1. Create Grafana admin credentials secret
+./kubernetes/infrastructure/monitoring/create-grafana-secret.sh
+
+# 2. Deploy monitoring stack
 kubectl apply -f kubernetes/environments/prod/monitoring-app.yaml
 ```
 

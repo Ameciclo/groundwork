@@ -24,7 +24,18 @@ After following this guide, you'll have:
 
 ## 🚀 Quick Start
 
-### Step 1: Deploy Monitoring Stack
+### Step 1: Create Grafana Admin Secret
+
+**⚠️ REQUIRED: Must be done before deployment!**
+
+```bash
+# Create Grafana admin credentials with strong password
+./kubernetes/infrastructure/monitoring/create-grafana-secret.sh
+
+# Save the generated password securely!
+```
+
+### Step 2: Deploy Monitoring Stack
 
 ```bash
 # Apply the ArgoCD application
@@ -42,12 +53,13 @@ Wait for all pods to be running (takes ~3-5 minutes):
 - `prometheus-kube-state-metrics-xxx`
 - `prometheus-node-exporter-xxx`
 
-### Step 2: Access Grafana
+### Step 3: Access Grafana
 
 **URL:** `https://grafana.armadillo-hamal.ts.net`
 
-**Default Login:**
+**Login Credentials:**
 - Username: `admin`
+- Password: Use the password generated in Step 1
 - Password: `admin`
 
 ⚠️ **Change the password immediately!**

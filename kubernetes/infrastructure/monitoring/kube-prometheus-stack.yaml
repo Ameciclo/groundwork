@@ -84,6 +84,16 @@ spec:
         enabled: true
         storageClassName: local-path
         size: 5Gi
+
+      # Disable init container that's causing permission issues
+      initChownData:
+        enabled: false
+
+      # Security context following official Grafana K8s documentation
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
       
       # Resources
       resources:

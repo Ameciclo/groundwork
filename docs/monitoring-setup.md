@@ -262,7 +262,7 @@ kubectl port-forward -n monitoring svc/prometheus-prometheus 9090:9090
 
 **Check Traefik metrics endpoint:**
 ```bash
-kubectl exec -n kube-system deploy/traefik -- wget -qO- http://localhost:9100/metrics
+kubectl exec -n kube-system deploy/traefik -- wget -qO- http://localhost:8082/metrics
 ```
 
 ### Grafana shows "No data"

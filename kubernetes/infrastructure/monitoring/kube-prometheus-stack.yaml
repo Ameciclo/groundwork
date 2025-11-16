@@ -122,16 +122,7 @@ spec:
               options:
                 path: /var/lib/grafana/dashboards/default
       
-      # Datasources
-      datasources:
-        datasources.yaml:
-          apiVersion: 1
-          datasources:
-            - name: Prometheus
-              type: prometheus
-              url: http://prometheus-prometheus:9090
-              access: proxy
-              isDefault: true
+      # Datasources - let the chart handle default Prometheus datasource automatically
     
     # AlertManager configuration
     alertmanager:

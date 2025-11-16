@@ -10,7 +10,7 @@ metadata:
 spec:
   repo: https://prometheus-community.github.io/helm-charts
   chart: kube-prometheus-stack
-  version: 65.8.1
+  version: 79.2.0
   targetNamespace: monitoring
   
   valuesContent: |-
@@ -72,7 +72,8 @@ spec:
     grafana:
       enabled: true
       
-      # Admin credentials
+      # Administrator credentials
+      adminUser: admin
       adminPassword: admin  # Change this in production!
       
       # Persistence

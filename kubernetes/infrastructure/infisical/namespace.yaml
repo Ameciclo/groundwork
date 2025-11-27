@@ -1,0 +1,10 @@
+---
+# Infisical System Namespace
+# Central namespace for Infisical operator and shared credentials
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical-system
+  labels:
+    app.kubernetes.io/name: infisical
+    app.kubernetes.io/component: secrets-management

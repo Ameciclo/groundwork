@@ -13,6 +13,8 @@
 # Environment variables required:
 #   - TAILSCALE_OAUTH_CLIENT_ID
 #   - TAILSCALE_OAUTH_CLIENT_SECRET
+#   - INFISICAL_CLIENT_ID (optional - for secrets management)
+#   - INFISICAL_CLIENT_SECRET (optional - for secrets management)
 
 - name: K3s Bootstrap - Install K3s, Tailscale Operator, and ArgoCD
   hosts: all
@@ -53,6 +55,11 @@
       set_fact:
         tailscale_client_id: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_ID') }}"
         tailscale_client_secret: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_SECRET') }}"
+
+    - name: Set Infisical credentials from environment (optional)
+      set_fact:
+        infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') | default('', true) }}"
+        infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') | default('', true) }}"
 
   tasks:
     # ========== System Preparation ==========
@@ -281,6 +288,27 @@
     # Note: ArgoCD Tailscale Ingress is now managed by ArgoCD itself
     # This allows GitOps management and self-healing
     # See: kubernetes/infrastructure/tailscale/argocd-ingress.yaml
+
+    # ========== Infisical Secrets Management Bootstrap ==========
+    # Creates the central namespace and auth secret for Infisical operator
+    # The operator itself is managed by ArgoCD (GitOps)
+    - name: Create Infisical system namespace
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl create namespace infisical-system --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+      changed_when: false
+      when: infisical_client_id is defined and infisical_client_id | length > 0
+
+    - name: Create Infisical Universal Auth secret
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        /usr/local/bin/k3s kubectl create secret generic infisical-universal-auth \
+          --namespace=infisical-system \
+          --from-literal=clientId="{{ infisical_client_id }}" \
+          --from-literal=clientSecret="{{ infisical_client_secret }}" \
+          --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+      changed_when: false
+      when: infisical_client_id is defined and infisical_client_id | length > 0
 
     # ========== Verification and Output ==========
     - name: Get K3s version

@@ -1,0 +1,31 @@
+# ArgoCD Application for Infisical Configuration
+# Syncs InfisicalSecret CRDs and namespace from Git
+# Note: The auth secret (infisical-universal-auth) is created by Ansible bootstrap
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infisical-config
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: kubernetes/infrastructure/infisical
+    directory:
+      recurse: false
+      # Only include YAML files (excludes shell scripts and .example files)
+      include: "*.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infisical-system  # Default namespace, but resources define their own
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

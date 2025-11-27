@@ -5,9 +5,11 @@ namespace: strapi
 
 resources:
   - namespace.yaml
+  - pvc.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+# Note: Secrets are managed by Infisical (see kubernetes/infrastructure/infisical/)
 
 commonLabels:
   app.kubernetes.io/name: strapi

@@ -1,0 +1,29 @@
+# ArgoCD Application for Infisical Kubernetes Operator
+# Installs the operator via Helm chart into infisical-system namespace
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infisical-operator
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+    chart: secrets-operator
+    targetRevision: "0.*"  # Latest 0.x version
+    helm:
+      releaseName: infisical-operator
+      # Operator watches all namespaces for InfisicalSecret CRDs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infisical-system  # Dedicated namespace for Infisical
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

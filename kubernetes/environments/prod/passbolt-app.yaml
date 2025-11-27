@@ -88,7 +88,8 @@ spec:
         redis:
           auth:
             enabled: true
-            password: "8J025qmad+mEZmvQQsHd/u972T4mUajBjqO9xBU1Wjw="
+            existingSecret: passbolt-infisical-managed
+            existingSecretPasswordKey: REDIS_PASSWORD
           sentinel:
             enabled: true
 

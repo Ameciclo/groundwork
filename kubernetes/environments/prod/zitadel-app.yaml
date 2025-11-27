@@ -1,0 +1,177 @@
+---
+# ArgoCD Application for Zitadel Identity Management
+# Uses official Helm chart with custom values
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zitadel
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://charts.zitadel.com
+    chart: zitadel
+    targetRevision: "9.*"
+    helm:
+      releaseName: zitadel
+      values: |
+        # =============================================================
+        # ZITADEL CONFIGURATION
+        # =============================================================
+
+        replicaCount: 1
+
+        # Use Zitadel v4.7.0 (latest)
+        image:
+          tag: "v4.7.0"
+
+        # =============================================================
+        # ZITADEL CONFIG
+        # =============================================================
+        zitadel:
+          # External domain for Zitadel (public domain via Traefik)
+          configmapConfig:
+            ExternalSecure: true
+            ExternalDomain: auth.az.ameciclo.org
+            ExternalPort: 443
+            TLS:
+              Enabled: false  # TLS terminated at Traefik ingress
+
+            # Database configuration
+            # Username and password from env vars via Infisical
+            Database:
+              Postgres:
+                Host: ameciclo-postgres.postgres.database.azure.com
+                Port: 5432
+                Database: zitadel
+                MaxOpenConns: 20
+                MaxIdleConns: 10
+                MaxConnLifetime: 30m
+                MaxConnIdleTime: 5m
+                User:
+                  SSL:
+                    Mode: require
+                Admin:
+                  # Connect to existing database for init (skips DB/user creation)
+                  ExistingDatabase: zitadel
+                  SSL:
+                    Mode: require
+
+          # Masterkey from Infisical (secret must have key named "masterkey")
+          masterkeySecretName: zitadel-infisical-managed
+
+        # =============================================================
+        # ENVIRONMENT VARIABLES FROM INFISICAL SECRET
+        # =============================================================
+        # All Zitadel env vars from Infisical:
+        # - ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+        # - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+        envVarsSecret: zitadel-infisical-managed
+
+        # Database credentials from Infisical
+        env:
+          # Admin credentials (for init/migrations)
+          - name: ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: POSTGRES_ADMIN
+          - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: POSTGRES_ADMIN_PASSWORD
+          # Runtime user credentials
+          - name: ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+          - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+
+        # =============================================================
+        # RESOURCES
+        # =============================================================
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # =============================================================
+        # INIT JOB
+        # =============================================================
+        initJob:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+        # =============================================================
+        # SETUP JOB
+        # =============================================================
+        setupJob:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+        # =============================================================
+        # SERVICE
+        # =============================================================
+        service:
+          type: ClusterIP
+          port: 8080
+
+        # =============================================================
+        # INGRESS - Disabled (we use Tailscale)
+        # =============================================================
+        ingress:
+          enabled: false
+
+        # =============================================================
+        # LOGIN UI (v2)
+        # =============================================================
+        login:
+          enabled: true
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        # =============================================================
+        # POSTGRESQL - Disabled (use external Azure PostgreSQL)
+        # =============================================================
+        postgresql:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zitadel
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

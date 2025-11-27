@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: zitadel
+
+resources:
+  - namespace.yaml
+  - ingress.yaml
+
+# Note: Main Zitadel deployment is managed by Helm via ArgoCD
+# See: kubernetes/environments/prod/zitadel-app.yaml
+# Note: Secrets are managed by Infisical
+# See: kubernetes/infrastructure/infisical/zitadel-infisical-secret.yaml
+

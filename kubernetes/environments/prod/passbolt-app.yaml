@@ -54,7 +54,7 @@ spec:
             APP_FULL_BASE_URL: "https://ulock.az.ameciclo.org"
             DEBUG: false
             PASSBOLT_REGISTRATION_PUBLIC: false
-            PASSBOLT_SSL_FORCE: true
+            PASSBOLT_SSL_FORCE: false
             PASSBOLT_KEY_EMAIL: "passbolt@ameciclo.org"
             EMAIL_DEFAULT_FROM: "no-reply@ameciclo.org"
             EMAIL_DEFAULT_FROM_NAME: "Ameciclo Passbolt"
@@ -62,24 +62,18 @@ spec:
             EMAIL_TRANSPORT_DEFAULT_HOST: "smtp.example.com"
             EMAIL_TRANSPORT_DEFAULT_PORT: 587
             EMAIL_TRANSPORT_DEFAULT_TLS: true
-
-          # Secrets will be injected from Infisical
-          extraEnvFrom:
-            - secretRef:
-                name: passbolt-infisical-managed
+            # Database host (non-sensitive)
+            DATASOURCES_DEFAULT_HOST: "ameciclo-postgres.postgres.database.azure.com"
+            DATASOURCES_DEFAULT_PORT: "5432"
+            DATASOURCES_DEFAULT_DATABASE: "passbolt"
+          # Use Infisical-managed secret for all sensitive values
+          secretName: "passbolt-infisical-managed"
 
         # =============================================================
         # DATABASE - Use external Azure PostgreSQL
         # =============================================================
         mariadbDependencyEnabled: false
         postgresqlDependencyEnabled: false
-
-        # Database connection via environment variables from Infisical:
-        # - DATASOURCES_DEFAULT_HOST
-        # - DATASOURCES_DEFAULT_PORT
-        # - DATASOURCES_DEFAULT_DATABASE
-        # - DATASOURCES_DEFAULT_USERNAME
-        # - DATASOURCES_DEFAULT_PASSWORD
 
         # =============================================================
         # REDIS - Deploy with chart

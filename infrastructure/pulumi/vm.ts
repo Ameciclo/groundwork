@@ -65,7 +65,8 @@ export function createK3sVm(
     resourceGroupName: args.resourceGroupName,
     location: args.location,
     hardwareProfile: {
-      vmSize: "Standard_B2as_v2",
+      // Upgraded from Standard_B2as_v2 (2 vCPU, 8GB) to support Superset + Zitadel
+      vmSize: "Standard_B4as_v2",  // 4 vCPU, 16GB RAM (AMD, same family)
     },
     osProfile: {
       computerName: `${args.projectName}-k3s`,

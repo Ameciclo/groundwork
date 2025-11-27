@@ -31,6 +31,8 @@ spec:
         app:
           image:
             tag: "5.7.2-1-ce"
+          database:
+            kind: postgresql
           cache:
             redis:
               enabled: true
@@ -86,7 +88,7 @@ spec:
         redis:
           auth:
             enabled: true
-            password: ""  # Will be set via Infisical
+            password: "8J025qmad+mEZmvQQsHd/u972T4mUajBjqO9xBU1Wjw="
           sentinel:
             enabled: true
 

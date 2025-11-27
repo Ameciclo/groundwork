@@ -1,6 +1,6 @@
 ---
-# Tailscale Ingress for Zitadel
-# Exposes Zitadel internally via Tailscale network
+# Traefik Ingress for Zitadel
+# Exposes Zitadel publicly via Traefik with Let's Encrypt TLS
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -10,15 +10,32 @@ metadata:
     app.kubernetes.io/name: zitadel
     app.kubernetes.io/component: ingress
   annotations:
-    kubernetes.io/ingress.class: tailscale
-    tailscale.com/hostname: "auth-az"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
-  defaultBackend:
-    service:
-      name: zitadel
-      port:
-        number: 8080
+  ingressClassName: traefik
   tls:
     - hosts:
-        - auth-az
+        - auth.az.ameciclo.org
+  rules:
+    - host: auth.az.ameciclo.org
+      http:
+        paths:
+          # Route v2 login UI traffic to the login service
+          - path: /ui/v2/login
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel-login
+                port:
+                  number: 3000
+          # Route all other traffic to the main zitadel service
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
 

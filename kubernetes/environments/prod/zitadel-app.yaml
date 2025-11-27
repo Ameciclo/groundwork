@@ -22,24 +22,30 @@ spec:
         # =============================================================
         # ZITADEL CONFIGURATION
         # =============================================================
-        
+
         replicaCount: 1
+
+        # Use Zitadel v4.7.0 (latest)
+        image:
+          tag: "v4.7.0"
 
         # =============================================================
         # ZITADEL CONFIG
         # =============================================================
         zitadel:
-          # External domain for Zitadel (Tailscale hostname)
+          # External domain for Zitadel (public domain via Traefik)
           configmapConfig:
             ExternalSecure: true
-            ExternalDomain: auth-az.tail1c46f5.ts.net
+            ExternalDomain: auth.az.ameciclo.org
             ExternalPort: 443
             TLS:
-              Enabled: false  # TLS terminated at Tailscale ingress
-            
+              Enabled: false  # TLS terminated at Traefik ingress
+
+            # Database configuration
+            # Username and password from env vars via Infisical
             Database:
               Postgres:
-                Host: # Set via secret
+                Host: ameciclo-postgres.postgres.database.azure.com
                 Port: 5432
                 Database: zitadel
                 MaxOpenConns: 20
@@ -50,41 +56,46 @@ spec:
                   SSL:
                     Mode: require
                 Admin:
+                  # Connect to existing database for init (skips DB/user creation)
+                  ExistingDatabase: zitadel
                   SSL:
                     Mode: require
 
-          # Database credentials from Infisical
-          dbSslCaCrt: ""
-          
-          # Master key for encryption (32 bytes base64)
+          # Masterkey from Infisical (secret must have key named "masterkey")
           masterkeySecretName: zitadel-infisical-managed
-          
-          # Secret containing database credentials
-          secretConfig:
-            Database:
-              Postgres:
-                Host:
-                  _fromSecret:
-                    secretName: zitadel-infisical-managed
-                    secretKey: DATABASE_HOST
-                User:
-                  Username:
-                    _fromSecret:
-                      secretName: zitadel-infisical-managed
-                      secretKey: DATABASE_USER
-                  Password:
-                    _fromSecret:
-                      secretName: zitadel-infisical-managed
-                      secretKey: DATABASE_PASSWORD
-                Admin:
-                  Username:
-                    _fromSecret:
-                      secretName: zitadel-infisical-managed
-                      secretKey: DATABASE_ADMIN_USER
-                  Password:
-                    _fromSecret:
-                      secretName: zitadel-infisical-managed
-                      secretKey: DATABASE_ADMIN_PASSWORD
+
+        # =============================================================
+        # ENVIRONMENT VARIABLES FROM INFISICAL SECRET
+        # =============================================================
+        # All Zitadel env vars from Infisical:
+        # - ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+        # - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+        envVarsSecret: zitadel-infisical-managed
+
+        # Database credentials from Infisical
+        env:
+          # Admin credentials (for init/migrations)
+          - name: ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: POSTGRES_ADMIN
+          - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: POSTGRES_ADMIN_PASSWORD
+          # Runtime user credentials
+          - name: ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: ZITADEL_DATABASE_POSTGRES_USER_USERNAME
+          - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zitadel-infisical-managed
+                key: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
 
         # =============================================================
         # RESOURCES
@@ -133,6 +144,20 @@ spec:
         # =============================================================
         ingress:
           enabled: false
+
+        # =============================================================
+        # LOGIN UI (v2)
+        # =============================================================
+        login:
+          enabled: true
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
 
         # =============================================================
         # POSTGRESQL - Disabled (use external Azure PostgreSQL)

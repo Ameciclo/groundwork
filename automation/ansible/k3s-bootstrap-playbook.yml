@@ -31,7 +31,7 @@
 
     # Component Versions
     helm_version: "v3.14.0"
-    tailscale_operator_version: "1.90.6"
+    tailscale_operator_version: "1.90.9"
     argocd_version: "7.3.3"
 
     # Namespaces
@@ -222,6 +222,7 @@
           --install \
           tailscale-operator \
           tailscale/tailscale-operator \
+          --version={{ tailscale_operator_version }} \
           --namespace={{ tailscale_namespace }} \
           --create-namespace \
           --set-string oauth.clientId="{{ tailscale_client_id }}" \

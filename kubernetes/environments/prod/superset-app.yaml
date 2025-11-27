@@ -1,0 +1,172 @@
+---
+# ArgoCD Application for Apache Superset
+# Uses official Helm chart with custom values
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: superset
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://apache.github.io/superset
+    chart: superset
+    targetRevision: "0.*"
+    helm:
+      releaseName: superset
+      values: |
+        # =============================================================
+        # SUPERSET CONFIGURATION
+        # =============================================================
+        
+        # Image
+        image:
+          repository: apachesuperset.docker.scarf.sh/apache/superset
+          tag: "latest"
+          pullPolicy: IfNotPresent
+
+        # Service Account
+        serviceAccount:
+          create: true
+          name: superset
+
+        # =============================================================
+        # SUPERSET WEB SERVER
+        # =============================================================
+        supersetNode:
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+        # =============================================================
+        # SUPERSET CELERY WORKERS
+        # =============================================================
+        supersetWorker:
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        # =============================================================
+        # SUPERSET CELERY BEAT (Scheduler)
+        # =============================================================
+        supersetCeleryBeat:
+          enabled: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        # =============================================================
+        # SUPERSET CELERY FLOWER (Monitoring) - Disabled
+        # =============================================================
+        supersetCeleryFlower:
+          enabled: false
+
+        # =============================================================
+        # DATABASE - Use External PostgreSQL (Azure)
+        # =============================================================
+        postgresql:
+          enabled: false  # We use Azure PostgreSQL
+
+        # External database connection via secret
+        extraSecretEnv:
+          SUPERSET_DATABASE_USER:
+            secretName: superset-infisical-managed
+            secretKey: DATABASE_USER
+          SUPERSET_DATABASE_PASSWORD:
+            secretName: superset-infisical-managed
+            secretKey: DATABASE_PASSWORD
+          SUPERSET_DATABASE_HOST:
+            secretName: superset-infisical-managed
+            secretKey: DATABASE_HOST
+          SUPERSET_DATABASE_NAME:
+            secretName: superset-infisical-managed
+            secretKey: DATABASE_NAME
+          SUPERSET_SECRET_KEY:
+            secretName: superset-infisical-managed
+            secretKey: SECRET_KEY
+
+        # Database connection string built from secrets
+        configOverrides:
+          secret: |
+            import os
+
+            # Database connection
+            SQLALCHEMY_DATABASE_URI = f"postgresql://{os.environ['SUPERSET_DATABASE_USER']}:{os.environ['SUPERSET_DATABASE_PASSWORD']}@{os.environ['SUPERSET_DATABASE_HOST']}:5432/{os.environ['SUPERSET_DATABASE_NAME']}?sslmode=require"
+
+            # Secret key for session signing
+            SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY', 'thisISaSECRET_1234')
+
+            # Mapbox token for maps (optional, from env)
+            MAPBOX_API_KEY = os.environ.get('MAPBOX_API_KEY', '')
+
+        # =============================================================
+        # REDIS - Enable built-in Redis
+        # =============================================================
+        redis:
+          enabled: true
+          architecture: standalone
+          auth:
+            enabled: false
+          master:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
+
+        # =============================================================
+        # INIT JOB - Database initialization
+        # =============================================================
+        init:
+          enabled: true
+          createAdmin: true
+          adminUser:
+            username: admin
+            firstname: Admin
+            lastname: User
+            email: admin@ameciclo.org
+            password: admin  # Change this! Or use secret
+
+        # =============================================================
+        # SERVICE
+        # =============================================================
+        service:
+          type: ClusterIP
+          port: 8088
+
+        # =============================================================
+        # INGRESS - Disabled (we use Tailscale)
+        # =============================================================
+        ingress:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: superset
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

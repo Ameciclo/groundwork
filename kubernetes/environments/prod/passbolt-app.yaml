@@ -1,0 +1,124 @@
+---
+# ArgoCD Application for Passbolt Password Manager
+# Uses official Helm chart with custom values
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: passbolt
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.telegram: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.telegram: ""
+    notifications.argoproj.io/subscribe.on-health-degraded.telegram: ""
+spec:
+  project: default
+  source:
+    repoURL: https://download.passbolt.com/charts/passbolt
+    chart: passbolt
+    targetRevision: "2.0.1"
+    helm:
+      releaseName: passbolt
+      values: |
+        # =============================================================
+        # PASSBOLT CONFIGURATION
+        # =============================================================
+
+        replicaCount: 1
+
+        # =============================================================
+        # APP CONFIGURATION
+        # =============================================================
+        app:
+          image:
+            tag: "5.7.2-1-ce"
+          database:
+            kind: postgresql
+          cache:
+            redis:
+              enabled: true
+              sentinelProxy:
+                enabled: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        # =============================================================
+        # PASSBOLT ENVIRONMENT VARIABLES
+        # =============================================================
+        passboltEnv:
+          plain:
+            APP_FULL_BASE_URL: "https://ulock.az.ameciclo.org"
+            DEBUG: false
+            PASSBOLT_REGISTRATION_PUBLIC: false
+            PASSBOLT_SSL_FORCE: false
+            PASSBOLT_KEY_EMAIL: "passbolt@ameciclo.org"
+            EMAIL_DEFAULT_FROM: "no-reply@ameciclo.org"
+            EMAIL_DEFAULT_FROM_NAME: "Ameciclo Passbolt"
+            # Email transport - configure with real SMTP later
+            EMAIL_TRANSPORT_DEFAULT_HOST: "smtp.example.com"
+            EMAIL_TRANSPORT_DEFAULT_PORT: 587
+            EMAIL_TRANSPORT_DEFAULT_TLS: true
+            # Database host (non-sensitive)
+            DATASOURCES_DEFAULT_HOST: "ameciclo-postgres.postgres.database.azure.com"
+            DATASOURCES_DEFAULT_PORT: "5432"
+            DATASOURCES_DEFAULT_DATABASE: "passbolt"
+          # Use Infisical-managed secret for all sensitive values
+          secretName: "passbolt-infisical-managed"
+
+        # =============================================================
+        # DATABASE - Use external Azure PostgreSQL
+        # =============================================================
+        mariadbDependencyEnabled: false
+        postgresqlDependencyEnabled: false
+
+        # =============================================================
+        # REDIS - Deploy with chart
+        # =============================================================
+        redisDependencyEnabled: true
+        redis:
+          auth:
+            enabled: true
+            existingSecret: passbolt-infisical-managed
+            existingSecretPasswordKey: REDIS_PASSWORD
+          sentinel:
+            enabled: true
+
+        # =============================================================
+        # SERVICE
+        # =============================================================
+        service:
+          type: ClusterIP
+          ports:
+            https:
+              port: 443
+              targetPort: 443
+            http:
+              port: 80
+              targetPort: 80
+
+        # =============================================================
+        # INGRESS - Disabled (we use separate Traefik ingress)
+        # =============================================================
+        ingress:
+          enabled: false
+
+        # =============================================================
+        # GPG KEYS - Will be generated on first run
+        # =============================================================
+        gpgServerKeyPublic: ""
+        gpgServerKeyPrivate: ""
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: passbolt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

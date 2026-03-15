@@ -239,7 +239,7 @@ const storageAccount = new azure.storage.StorageAccount("ameciclo-storage", {
   },
   kind: azure.storage.Kind.StorageV2,
   accessTier: azure.storage.AccessTier.Hot,
-  allowBlobPublicAccess: false,
+  allowBlobPublicAccess: true,
   allowSharedKeyAccess: true,
   minimumTlsVersion: azure.storage.MinimumTlsVersion.TLS1_2,
   networkRuleSet: {
@@ -259,7 +259,7 @@ const mediaContainer = new azure.storage.BlobContainer("media", {
   containerName: "media",
   accountName: storageAccount.name,
   resourceGroupName: resourceGroup.name,
-  publicAccess: azure.storage.PublicAccess.None,
+  publicAccess: azure.storage.PublicAccess.Blob,
 });
 
 const backupsContainer = new azure.storage.BlobContainer("backups", {

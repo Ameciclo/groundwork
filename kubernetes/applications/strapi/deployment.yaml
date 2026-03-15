@@ -62,31 +62,21 @@ spec:
                 secretKeyRef:
                   name: strapi-infisical-managed
                   key: TRANSFER_TOKEN_SALT
-            - name: DO_SPACE_KEY
+            - name: AZURE_STORAGE_ACCOUNT
               valueFrom:
                 secretKeyRef:
                   name: strapi-infisical-managed
-                  key: DO_SPACE_KEY
-            - name: DO_SPACE_SECRET
+                  key: AZURE_STORAGE_ACCOUNT
+            - name: AZURE_STORAGE_ACCOUNT_KEY
               valueFrom:
                 secretKeyRef:
                   name: strapi-infisical-managed
-                  key: DO_SPACE_SECRET
-            - name: DO_SPACE_REGION
+                  key: AZURE_STORAGE_ACCOUNT_KEY
+            - name: AZURE_STORAGE_CONTAINER
               valueFrom:
                 secretKeyRef:
                   name: strapi-infisical-managed
-                  key: DO_SPACE_REGION
-            - name: DO_SPACE_ENDPOINT
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-infisical-managed
-                  key: DO_SPACE_ENDPOINT
-            - name: DO_SPACE_BUCKET
-              valueFrom:
-                secretKeyRef:
-                  name: strapi-infisical-managed
-                  key: DO_SPACE_BUCKET
+                  key: AZURE_STORAGE_CONTAINER
           livenessProbe:
             httpGet:
               path: /

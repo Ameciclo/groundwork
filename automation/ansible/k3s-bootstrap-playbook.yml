@@ -32,7 +32,7 @@
     # Component Versions
     helm_version: "v3.14.0"
     tailscale_operator_version: "1.96.5"
-    argocd_version: "8.5.7"
+    argocd_version: "9.5.9"
 
     # Namespaces
     argocd_namespace: "argocd"

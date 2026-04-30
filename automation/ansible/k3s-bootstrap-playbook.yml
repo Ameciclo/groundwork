@@ -23,7 +23,7 @@
 
   vars:
     # K3s Configuration
-    k3s_version: "v1.32.4+k3s1"
+    k3s_version: "v1.35.4+k3s1"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
     user_kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
     pod_cidr: "10.42.0.0/16" # Changed from 10.10.0.0/16 to avoid VNet conflict

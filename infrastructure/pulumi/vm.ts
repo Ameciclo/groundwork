@@ -10,6 +10,17 @@ export interface VmArgs {
   tags: Record<string, string>;
 }
 
+const COOLIFY_CLOUD_INIT = `#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - ca-certificates
+runcmd:
+  - [ sh, -xc, "curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash" ]
+final_message: "Coolify install complete after $UPTIME seconds"
+`;
+
 export function createK3sVm(
   name: string,
   args: VmArgs,
@@ -59,18 +70,20 @@ export function createK3sVm(
     tags: args.tags,
   });
 
-  // K3s Virtual Machine
+  // Coolify Virtual Machine (Pulumi resource name kept as `k3s-vm` so the
+  // Public IP / NIC are retained on replace — keeps the same public IP and
+  // avoids DNS updates during the migration from k3s to Coolify.)
   const vm = new azure.compute.VirtualMachine(`${name}-vm`, {
-    vmName: `${args.projectName}-k3s-vm`,
+    vmName: `${args.projectName}-coolify-vm`,
     resourceGroupName: args.resourceGroupName,
     location: args.location,
     hardwareProfile: {
-      // Upgraded from Standard_B2as_v2 (2 vCPU, 8GB) to support Superset + Zitadel
-      vmSize: "Standard_B4as_v2",  // 4 vCPU, 16GB RAM (AMD, same family)
+      vmSize: "Standard_B4as_v2",  // 4 vCPU, 16GB RAM
     },
     osProfile: {
-      computerName: `${args.projectName}-k3s`,
+      computerName: `${args.projectName}-coolify`,
       adminUsername: "azureuser",
+      customData: Buffer.from(COOLIFY_CLOUD_INIT).toString("base64"),
       linuxConfiguration: {
         disablePasswordAuthentication: true,
         ssh: {
@@ -91,7 +104,7 @@ export function createK3sVm(
         version: "latest",
       },
       osDisk: {
-        name: `${args.projectName}-k3s-osdisk`,
+        name: `${args.projectName}-coolify-osdisk`,
         caching: "ReadWrite",
         createOption: "FromImage",
         managedDisk: {
@@ -109,7 +122,7 @@ export function createK3sVm(
     },
     tags: {
       ...args.tags,
-      Name: "K3s",
+      Name: "Coolify",
     },
   });
 

@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import * as random from "@pulumi/random";
-import { createK3sVm } from "./vm";
+import { createCoolifyVm } from "./vm";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -276,8 +276,10 @@ const logsContainer = new azure.storage.BlobContainer("logs", {
   publicAccess: azure.storage.PublicAccess.None,
 });
 
-// Create K3s VM
-const k3sVm = createK3sVm("k3s", {
+// Create Coolify VM (Pulumi resource constructor name kept as "k3s" so
+// the existing Public IP and NIC are retained — renaming would force
+// destroy+recreate of the public IP and a DNS update.)
+const coolifyVm = createCoolifyVm("k3s", {
   resourceGroupName: resourceGroup.name,
   location: location,
   subnetId: k3sSubnet.id,
@@ -291,15 +293,15 @@ export const resourceGroupName = resourceGroup.name;
 export const resourceGroupId = resourceGroup.id;
 export const vnetName = vnet.name;
 export const vnetId = vnet.id;
-export const k3sSubnetId = k3sSubnet.id;
+export const vmSubnetId = k3sSubnet.id;
 export const databaseSubnetId = databaseSubnet.id;
 export const postgresqlServerName = postgresqlServer.name;
 export const postgresqlServerFqdn = postgresqlServer.fullyQualifiedDomainName;
-export const k3sVmId = k3sVm.vm.id;
-export const k3sVmName = k3sVm.vm.name;
-export const k3sPublicIp = k3sVm.publicIp.ipAddress;
-export const k3sPrivateIp = pulumi.output("10.10.1.4");
-export const k3sSshCommand = pulumi.interpolate`ssh azureuser@${k3sVm.publicIp.ipAddress}`;
+export const coolifyVmId = coolifyVm.vm.id;
+export const coolifyVmName = coolifyVm.vm.name;
+export const coolifyPublicIp = coolifyVm.publicIp.ipAddress;
+export const coolifyPrivateIp = pulumi.output("10.10.1.4");
+export const coolifySshCommand = pulumi.interpolate`ssh azureuser@${coolifyVm.publicIp.ipAddress}`;
 
 // Storage exports
 export const storageAccountName = storageAccount.name;

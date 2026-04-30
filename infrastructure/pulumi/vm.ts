@@ -21,7 +21,7 @@ runcmd:
 final_message: "Coolify install complete after $UPTIME seconds"
 `;
 
-export function createK3sVm(
+export function createCoolifyVm(
   name: string,
   args: VmArgs,
 ): {

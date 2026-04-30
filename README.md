@@ -1,242 +1,150 @@
-# Groundwork - Ameciclo Infrastructure
+# Groundwork — Ameciclo Infrastructure
 
-Modern cloud infrastructure for Ameciclo using **Pulumi + Azure + Kubernetes**.
+Cloud infrastructure for Ameciclo: **Pulumi + Azure + Coolify**.
 
-## 🚀 Quick Start
+A single Azure VM runs [Coolify](https://coolify.io), which manages Dockerized applications (currently Strapi). Persistent state — PostgreSQL and media — lives in managed Azure services so the VM is essentially stateless and can be replaced without data loss.
 
-```bash
-# 1. Deploy infrastructure
-cd infrastructure/pulumi
-npm install           # Install dependencies
-pulumi stack init ameciclo/prod  # Initialize stack
-pulumi up             # Deploy to Azure
-
-# 2. Access your cluster
-ssh azureuser@$(pulumi stack output k3sPublicIp)
-
-# 3. Check applications
-kubectl get applications -n argocd
-```
-
-## 🏗️ What Gets Deployed
-
-### Infrastructure (Pulumi)
-- **🌐 Azure Virtual Network** - Secure networking with K3s and database subnets
-- **🗄️ PostgreSQL Flexible Server** - Private database (Standard_B2s) with 3 databases: strapi, atlas, zitadel
-- **☸️ K3s Kubernetes Cluster** - Lightweight Kubernetes on Ubuntu 22.04 LTS (Standard_B2as_v2)
-- **💾 Blob Storage** - Media, backups, and logs containers
-- **🔒 Network Security** - Firewall rules, private DNS, and SSH-only access
-
-### Bootstrap (Ansible)
-- **K3s** - Kubernetes installation and configuration
-- **Tailscale Operator** - VPN operator (bootstrap only)
-- **ArgoCD** - GitOps deployment platform
-
-### GitOps (ArgoCD)
-- **Tailscale** - Ingress and subnet router configuration
-- **Traefik** - Ingress controller v37.2.0 with Let's Encrypt
-- **Monitoring** - Prometheus + Grafana for metrics and dashboards
-- **Applications** - Strapi CMS, Atlas APIs, Zitadel Auth
-- **Infrastructure** - Infisical secrets management
-
-**💰 Cost**: ~$70-80/month for complete infrastructure
-
-## 📁 Repository Structure
-
-```
-groundwork/
-├── 🏗️  infrastructure/           # Infrastructure as Code
-│   └── pulumi/                  # Pulumi (Azure infrastructure)
-│       ├── index.ts             # Main infrastructure definition
-│       ├── vm.ts                # K3s VM configuration
-│       ├── scripts/             # Database setup scripts
-│       └── esc/                 # Pulumi ESC environments
-├── ☸️  kubernetes/               # Kubernetes manifests
-│   ├── applications/            # Custom applications (Strapi, Atlas, Zitadel)
-│   ├── infrastructure/          # Platform components (Traefik, ArgoCD)
-│   └── argocd/                  # ArgoCD application definitions
-└── 📚 docs/                     # Documentation & guides
-```
-
-## 📋 Prerequisites
-
-- [Node.js](https://nodejs.org/) 18+
-- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139.0+
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- Azure account + Service Principal
-- SSH key pair
-- Pulumi Cloud account (for ESC environments)
-
-## 🔧 Detailed Setup
-
-<details>
-<summary>Click to expand detailed setup instructions</summary>
-
-### 1. Install Dependencies
+## Quick start
 
 ```bash
 cd infrastructure/pulumi
 npm install
+pulumi up
+
+# VM provisions itself with Coolify via cloud-init (~5-10 min after pulumi up)
+# Coolify UI: https://coolify.az.ameciclo.org
+ssh azureuser@$(pulumi stack output coolifyPublicIp)
 ```
 
-### 2. Configure Pulumi ESC Environment
+## What gets deployed
 
-```bash
-# Create ESC environment
-pulumi env init ameciclo/infrastructure-prod
+### Azure (managed by Pulumi, in `infrastructure/pulumi/`)
 
-# Edit environment (copy from infrastructure/pulumi/esc/prod.yaml)
-pulumi env edit ameciclo/infrastructure-prod
+- **Virtual Network** — `10.10.0.0/16`, with VM subnet `10.10.1.0/24` and database subnet `10.10.2.0/24`
+- **PostgreSQL Flexible Server** — private (VNet-only), with databases for `strapi`, `atlas`, `zitadel`
+- **VM** — Ubuntu 22.04 LTS, Standard_B4as_v2 (4 vCPU, 16 GB), self-installs Coolify via cloud-init
+- **Blob Storage** — `media`, `backups`, `logs` containers
+- **Network Security Group** — only 22 / 80 / 443 open
 
-# Update SSH public key in the environment
-cat ~/.ssh/id_rsa.pub  # Copy this value
+### On the VM (managed by Coolify)
+
+- **Coolify** itself, exposed at `https://coolify.az.ameciclo.org` via its built-in Traefik with Let's Encrypt
+- **Strapi** (CMS) — pulled from `ghcr.io/ameciclo/strapi:latest`, exposed at `https://strapi.az.ameciclo.org`. Connects to the Azure Postgres `strapi` database and Azure Blob `media` container.
+
+Other apps (Atlas, Zitadel, Passbolt) are not currently deployed. Their databases still exist in Azure Postgres and can be used if/when those apps are revived through Coolify.
+
+## Repository layout
+
+```
+groundwork/
+├── azure/scripts/                  # One-off scripts (Postgres user provisioning)
+└── infrastructure/pulumi/          # Pulumi stack: Azure VNet, VM, Postgres, Storage
+    ├── index.ts                    # Resources (network, postgres, storage)
+    ├── vm.ts                       # VM with Coolify cloud-init
+    ├── esc/                        # Pulumi ESC environments
+    └── ...
 ```
 
-### 3. Configure Azure Authentication
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139+
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (logged in)
+- SSH key pair
+- Pulumi Cloud account
+
+## Initial setup
 
 ```bash
-# Login to Azure
-az login
+cd infrastructure/pulumi
+npm install
 
-# Pulumi will auto-detect Azure credentials from Azure CLI
-```
-
-### 4. Set Stack Configuration
-
-```bash
-# Set SSH key (if not using ESC)
+# Set the SSH public key the VM should accept
 pulumi config set --secret adminSshPublicKey "$(cat ~/.ssh/id_rsa.pub)"
+
+# Initialize stack (only needed once per environment)
+pulumi stack init ameciclo/prod
+
+# Deploy
+pulumi up
 ```
 
-### 5. Deploy
+After `pulumi up` completes, the VM takes ~5–10 minutes to finish cloud-init and bring up Coolify. SSH in to check progress:
 
 ```bash
-pulumi preview  # Review what will be created
-pulumi up      # Deploy infrastructure
+ssh azureuser@$(pulumi stack output coolifyPublicIp)
+cloud-init status
+sudo docker ps
 ```
 
-### 6. Create Database Users
+Once Coolify is running, set its public domain via the UI (initial access via SSH tunnel: `ssh -L 8000:localhost:8000 -L 6001:localhost:6001 -L 6002:localhost:6002 azureuser@<vm-ip>`), then everything afterwards is via `https://coolify.az.ameciclo.org`.
 
-```bash
-# SSH into the K3s VM
-ssh azureuser@$(pulumi stack output k3sPublicIp)
+## DNS
 
-# Copy and run the database setup script
-# (Script is automatically copied during deployment)
-POSTGRES_ADMIN_PASSWORD='<from-pulumi-output>' ./create-database-users.sh
-```
+DNS is hosted at Cloudflare. Records currently in use:
 
-</details>
+| Hostname | Type | Target | Cloudflare proxy |
+|---|---|---|---|
+| `coolify.az.ameciclo.org` | A | VM public IP | DNS-only (grey) |
+| `strapi.az.ameciclo.org` | A | VM public IP | DNS-only (grey) |
 
-## 🏗️ Infrastructure Details
+Coolify-provided Traefik issues Let's Encrypt certs via HTTP-01 challenge, which requires direct (DNS-only) access. Cloudflare proxy can be enabled later if you want CDN/WAF in front, but Let's Encrypt renewal needs to be reconfigured for DNS-01 first.
 
-<details>
-<summary>Azure Resources (click to expand)</summary>
+## Adding new apps in Coolify
 
-### 🌐 Virtual Network
+1. In Coolify UI: **+ Add Resource** → **Docker Image** (or **Public/Private Repository** for git-based)
+2. Configure ports, domain, env vars
+3. For automated deploys on git push: get the deploy webhook URL from the resource's **Webhooks** tab and add a `curl` step to the app's CI workflow
 
-- **Address Space**: `10.10.0.0/16`
-- **K3s Subnet**: `10.10.1.0/24`
-- **Database Subnet**: `10.10.2.0/24`
+## Cost estimate
 
-### 🗄️ PostgreSQL Flexible Server
+| Service | Tier | Monthly |
+|---|---|---|
+| PostgreSQL | Standard_B2s | ~$24 |
+| VM | Standard_B4as_v2 | ~$70 |
+| Storage | Standard LRS | ~$2 |
+| Networking | Standard | ~$8 |
+| **Total** | | **~$104** |
 
-- **Tier**: Standard_B2s (2 vCores, 4GB RAM)
-- **Storage**: 32GB, 7-day backups
-- **Networking**: Private only (VNet access)
-- **Databases**: `strapi`, `atlas`, `zitadel`
-- **Users**: Auto-generated with secure passwords
+(Estimates for West US 3, in USD. Actuals will vary.)
 
-### ☸️ K3s Cluster
+## Security
 
-- **VM Size**: Standard_B2as_v2 (2 vCPUs, 8GB RAM)
-- **OS**: Ubuntu 22.04 LTS
-- **Storage**: 30GB Premium SSD
-- **IP**: Static private + public IP
-- **K3s Version**: Latest stable
+- PostgreSQL is private (VNet-only)
+- SSH is key-auth only
+- NSG opens only 22 / 80 / 443
+- Secrets are stored in Pulumi ESC (infrastructure) and Coolify per-app env vars (applications)
+- HTTPS is automatic for any domain configured on a Coolify resource
 
-### 💾 Blob Storage
-
-- **Type**: Standard LRS (Locally Redundant Storage)
-- **Containers**: `media`, `backups`, `logs`
-- **Access**: Private with VNet integration
-- **TLS**: Minimum version 1.2
-
-</details>
-
-## 📱 Applications
-
-| Application | Purpose              | URL Pattern              |
-| ----------- | -------------------- | ------------------------ |
-| **Strapi**  | Headless CMS         | `strapi.az.ameciclo.org` |
-| **Atlas**   | Traffic Data APIs    | `atlas.az.ameciclo.org`  |
-| **Zitadel** | Identity & Auth      | `auth.az.ameciclo.org`   |
-| **Traefik** | Ingress Controller   | Auto HTTPS               |
-| **ArgoCD**  | GitOps Deployment    | Internal                 |
-| **Infisical** | Secrets Management | Internal                 |
-
-### 🔄 GitOps Workflow
-
-1. **Push** code changes to this repository
-2. **ArgoCD** detects changes automatically
-3. **Deploys** applications to Kubernetes cluster
-4. **Notifies** via Telegram on success/failure
-
-## 💰 Cost Breakdown
-
-| Service    | Tier             | Monthly Cost |
-| ---------- | ---------------- | ------------ |
-| PostgreSQL | Standard_B2s     | ~$24         |
-| VM (K3s)   | Standard_B2as_v2 | ~$38         |
-| Storage    | Standard LRS     | ~$2          |
-| Networking | Standard         | ~$8          |
-| **Total**  |                  | **~$72**     |
-
-*Costs are estimates for West US 3 region. Actual costs may vary.*
-
-## 🛠️ Management Commands
+## Common operations
 
 ```bash
 # Infrastructure
 cd infrastructure/pulumi
-pulumi stack output                              # View outputs
-pulumi stack output postgresqlAdminPassword --show-secrets  # Get DB password
-pulumi up                                        # Update infrastructure
-pulumi destroy                                   # ⚠️ Destroy everything
+pulumi stack output                           # All exports
+pulumi stack output coolifyPublicIp           # VM public IP
+pulumi up                                     # Apply changes
+pulumi destroy                                # ⚠️ tear everything down
 
-# Access K3s VM
-ssh azureuser@$(pulumi stack output k3sPublicIp)
-
-# Kubernetes (from VM)
-kubectl get applications -n argocd               # View ArgoCD apps
-kubectl get pods -A                              # Check all pods
-kubectl logs -n <namespace> <pod-name>           # View logs
-btop                                             # System monitor
+# VM
+ssh azureuser@$(pulumi stack output coolifyPublicIp)
+sudo docker ps                                # Running containers
+sudo journalctl -u docker --since '1 hour ago' # Docker daemon logs
 ```
 
-## 🔒 Security Features
+## Replacing the VM
 
-- ✅ **Private Database** - PostgreSQL only accessible from VNet
-- ✅ **SSH Key Auth** - No password authentication
-- ✅ **Network Security Groups** - Restricted port access (SSH, HTTP, HTTPS only)
-- ✅ **Secret Management** - Pulumi ESC + Infisical
-- ✅ **Auto HTTPS** - Traefik + Let's Encrypt
-- ✅ **Encrypted Secrets** - All passwords encrypted in Pulumi state
-- ✅ **Private DNS** - Internal DNS resolution for database
+The VM is stateless. To replace it (OS upgrade, fresh install, etc.):
 
-## 📚 Documentation
+```bash
+# Edit infrastructure/pulumi/vm.ts (e.g. cloud-init changes, image version)
+pulumi up
+# Pulumi recreates the VM in place; NIC + Public IP are retained,
+# so DNS doesn't need to change.
+```
 
-- [📖 Detailed Docs](docs/) - Kubernetes guides and concepts
-- [🏗️ Infrastructure Setup](infrastructure/pulumi/README.md) - Pulumi details
-- [☸️ Application Configs](kubernetes/) - Kubernetes manifests
-
-## 🤝 Contributing
-
-1. Fork this repository
-2. Create a feature branch
-3. Test in a separate Pulumi stack
-4. Submit a pull request
+The previous VM's data (Coolify database, application configs) is *not* preserved. Re-run Coolify's onboarding and re-add applications. Application data (Postgres, Blob) is unaffected.
 
 ---
 
-**Built with ❤️ by Ameciclo** | [Website](https://ameciclo.org) | [GitHub](https://github.com/Ameciclo)
+**Built by Ameciclo** | [ameciclo.org](https://ameciclo.org) | [GitHub](https://github.com/Ameciclo)

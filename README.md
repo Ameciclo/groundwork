@@ -125,17 +125,7 @@ Coolify-provided Traefik issues Let's Encrypt certs via HTTP-01 challenge, which
 
 Members of the **TI Ameciclo** Entra ID group can access the VM and database using their own Azure AD identity — no shared SSH key or DB password needed, and access can be revoked per-person by removing them from the group.
 
-```bash
-# SSH into the VM
-az extension add --name ssh   # one-time
-az ssh vm --resource-group ameciclo-rg-prod --name ameciclo-coolify-vm
-
-# Connect to Postgres with an AAD token instead of the shared psqladmin password
-TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
-psql "host=$(pulumi stack output postgresqlServerFqdn) dbname=postgres user=<your-email> sslmode=require" # use $TOKEN as the password when prompted
-```
-
-To add or remove someone's access, add/remove them from the `TI Ameciclo` group in Entra ID (`az ad group member add/remove --group "TI Ameciclo" --member-id <object-id>`) — no Pulumi change needed.
+See **[docs/connecting.md](docs/connecting.md)** for tested, step-by-step commands (SSH, tunneling to the private-only Postgres server, and the non-obvious AAD username quirk for group-based DB admin).
 
 ## CI
 

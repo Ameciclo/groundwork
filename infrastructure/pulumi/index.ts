@@ -354,3 +354,5 @@ export const logsContainerName = logsContainer.name;
 // PostgreSQL admin credentials (encrypted in Pulumi state)
 export const postgresqlAdminUsername = pulumi.output("psqladmin");
 export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
+
+// CI verification: intentionally empty, will be reverted.

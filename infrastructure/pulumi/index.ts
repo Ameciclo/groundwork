@@ -157,7 +157,7 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     location: location,
     administratorLogin: "psqladmin",
     administratorLoginPassword: postgresqlPassword.result,
-    version: azure.dbforpostgresql.ServerVersion.ServerVersion_16,
+    version: azure.dbforpostgresql.PostgresMajorVersion.PostgresMajorVersion_16,
     sku: {
       name: "Standard_B2s",
       tier: azure.dbforpostgresql.SkuTier.Burstable,
@@ -166,7 +166,7 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
       storageSizeGB: 32,
       autoGrow: azure.dbforpostgresql.StorageAutoGrow.Disabled,
       iops: 120,
-      tier: azure.dbforpostgresql.AzureManagedDiskPerformanceTiers.P4,
+      tier: azure.dbforpostgresql.AzureManagedDiskPerformanceTier.P4,
       type: "",
     },
     availabilityZone: "1",
@@ -174,14 +174,19 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
       // Enabled alongside passwordAuth: the running apps (Strapi/Atlas/Zitadel)
       // keep using their own password-based DB users; this only adds
       // Entra ID login for human admin access via the TI Ameciclo group.
-      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuthEnum.Enabled,
-      passwordAuth: azure.dbforpostgresql.PasswordAuthEnum.Enabled,
+      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuth.Enabled,
+      passwordAuth: azure.dbforpostgresql.PasswordAuth.Enabled,
     },
-    dataEncryption: {
-      type: azure.dbforpostgresql.ArmServerKeyType.SystemManaged,
-    },
+    // dataEncryption is intentionally omitted: it's immutable after server
+    // creation (already "SystemManaged"/service-managed keys, set at
+    // creation time and can never change), and azure-native 3.23.0 has a
+    // provider bug updating this field -- the API rejects the PATCH with
+    // "InvalidResourceIdSegment" on properties.dataEncryption.type
+    // (confirmed: server is healthy, untouched, still SystemManaged).
+    // Not managing it here avoids re-triggering that on every future
+    // `pulumi up`, since the value can never actually differ anyway.
     highAvailability: {
-      mode: azure.dbforpostgresql.HighAvailabilityMode.Disabled,
+      mode: azure.dbforpostgresql.PostgreSqlFlexibleServerHighAvailabilityMode.Disabled,
     },
     maintenanceWindow: {
       customWindow: "Disabled",
@@ -201,11 +206,17 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     },
     backup: {
       backupRetentionDays: 7,
-      geoRedundantBackup: azure.dbforpostgresql.GeoRedundantBackupEnum.Disabled,
+      geoRedundantBackup: azure.dbforpostgresql.GeoRedundantBackup.Disabled,
     },
     tags: commonTags,
   },
-  { dependsOn: [postgresqlDnsLink] },
+  {
+    dependsOn: [postgresqlDnsLink],
+    // See the dataEncryption comment above -- omitting the input alone
+    // still makes Pulumi want to unset it (same PATCH bug, opposite
+    // direction). ignoreChanges stops Pulumi from touching it at all.
+    ignoreChanges: ["dataEncryption"],
+  },
 );
 
 // Postgres AAD admin — lets TI Ameciclo group members connect with their own

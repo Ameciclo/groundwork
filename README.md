@@ -31,16 +31,20 @@ ssh azureuser@$(pulumi stack output coolifyPublicIp)
 - **Coolify** itself, exposed at `https://coolify.az.ameciclo.org` via its built-in Traefik with Let's Encrypt
 - **Strapi** (CMS) — pulled from `ghcr.io/ameciclo/strapi:latest`, exposed at `https://strapi.az.ameciclo.org`. Connects to the Azure Postgres `strapi` database and Azure Blob `media` container.
 
-Other apps (Atlas, Zitadel, Passbolt) are not currently deployed. Their databases still exist in Azure Postgres and can be used if/when those apps are revived through Coolify.
+Other apps (Atlas, Zitadel) are not currently deployed. Their databases still exist in Azure Postgres and can be used if/when those apps are revived through Coolify.
+
+**Known drift:** `passbolt` and `superset` databases (with `passbolt_user`/`superset_user`) also exist on the live Postgres server, but aren't declared anywhere in `index.ts` — they were created out-of-band, not through Pulumi. `pulumi preview`/`destroy` are blind to them; they just sit there unmanaged. Worth either importing them as real `Database` resources or documenting why not, but nobody's done either yet.
 
 ## Repository layout
 
 ```
 groundwork/
-├── azure/scripts/                  # One-off scripts (Postgres user provisioning)
+├── docs/connecting.md              # Tested VM/DB connection guide
+├── .github/workflows/              # CI (pulumi preview on PRs)
 └── infrastructure/pulumi/          # Pulumi stack: Azure VNet, VM, Postgres, Storage
     ├── index.ts                    # Resources (network, postgres, storage)
     ├── vm.ts                       # VM with Coolify cloud-init
+    ├── scripts/                    # DB user provisioning, local setup
     └── ...
 ```
 
@@ -83,6 +87,29 @@ sudo docker ps
 ```
 
 Once Coolify is running, set its public domain via the UI (initial access via SSH tunnel: `ssh -L 8000:localhost:8000 -L 6001:localhost:6001 -L 6002:localhost:6002 azureuser@<vm-ip>`), then everything afterwards is via `https://coolify.az.ameciclo.org`.
+
+### Configuration
+
+```bash
+pulumi config set projectName my-project     # default: ameciclo
+pulumi config set location westus2           # default: westus3
+pulumi config set environment staging        # default: production
+```
+
+### Outputs
+
+```bash
+pulumi stack output                # all of them
+pulumi stack output coolifyPublicIp
+```
+
+| Output | Description |
+|---|---|
+| `coolifyPublicIp` / `coolifySshCommand` | VM public IP / ready-to-use SSH command |
+| `postgresqlServerFqdn` | Database server FQDN |
+| `postgresqlAdminUsername` / `postgresqlAdminPassword` | Shared admin credential (`--show-secrets` to reveal) — prefer AAD login, see [Access](#access) |
+| `resourceGroupName` | Azure resource group |
+| `storageAccountName` | Blob storage account |
 
 ## DNS
 

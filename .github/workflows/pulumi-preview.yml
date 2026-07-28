@@ -1,0 +1,61 @@
+name: Pulumi Preview
+
+# Runs `pulumi preview` on PRs touching the infra code and comments the
+# diff. Deliberately `pull_request`, not `pull_request_target`: GitHub
+# withholds the OIDC token and repo secrets from fork-originated PRs under
+# this trigger, so a fork PR fails closed instead of getting Azure access.
+on:
+  pull_request:
+    paths:
+      - "infrastructure/pulumi/**"
+
+permissions:
+  id-token: write # required for Azure OIDC federation
+  contents: read
+  pull-requests: write # required for the preview comment
+
+concurrency:
+  group: pulumi-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      # Feeds @pulumi/azure-native's own OIDC token exchange (independent
+      # of the az CLI session azure/login sets up below).
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: npm install
+        working-directory: infrastructure/pulumi
+        run: npm install
+
+      # Establishes a real `az login` CLI session — the self-managed
+      # azblob:// state backend authenticates via the Azure SDK's
+      # DefaultAzureCredential chain, which falls back to this session.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: pulumi/actions@v6
+        with:
+          command: preview
+          diff: true
+          stack-name: prod
+          work-dir: infrastructure/pulumi
+          cloud-url: azblob://pulumi-state?storage_account=ameciclostorprod
+          secrets-provider: passphrase
+          comment-on-pr: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}

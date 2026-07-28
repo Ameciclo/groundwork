@@ -41,7 +41,6 @@ groundwork/
 └── infrastructure/pulumi/          # Pulumi stack: Azure VNet, VM, Postgres, Storage
     ├── index.ts                    # Resources (network, postgres, storage)
     ├── vm.ts                       # VM with Coolify cloud-init
-    ├── esc/                        # Pulumi ESC environments
     └── ...
 ```
 
@@ -51,7 +50,10 @@ groundwork/
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139+
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (logged in)
 - SSH key pair
-- Pulumi Cloud account
+- Membership in the `TI Ameciclo` Entra ID group (for `az storage`/`az ssh`/AAD-based DB access — see [Access](#access))
+- The stack passphrase (ask an existing admin — stored in Ameciclo's shared password manager)
+
+State and secrets are self-managed (no Pulumi Cloud account needed): state lives in the `pulumi-state` container of the `ameciclostorprod` Azure Storage account, and secrets are encrypted locally with a shared passphrase.
 
 ## Initial setup
 
@@ -59,11 +61,14 @@ groundwork/
 cd infrastructure/pulumi
 npm install
 
-# Set the SSH public key the VM should accept
-pulumi config set --secret adminSshPublicKey "$(cat ~/.ssh/id_rsa.pub)"
+# Log in to the self-managed state backend (one-time per machine)
+pulumi login "azblob://pulumi-state?storage_account=ameciclostorprod"
 
-# Initialize stack (only needed once per environment)
-pulumi stack init ameciclo/prod
+# Set the stack passphrase (ask an existing admin)
+export PULUMI_CONFIG_PASSPHRASE="<ask an admin>"
+
+# Select the existing stack (already initialized — don't `stack init` a new one)
+pulumi stack select prod
 
 # Deploy
 pulumi up
@@ -111,10 +116,30 @@ Coolify-provided Traefik issues Let's Encrypt certs via HTTP-01 challenge, which
 ## Security
 
 - PostgreSQL is private (VNet-only)
-- SSH is key-auth only
+- SSH accepts a shared keypair (`adminSshPublicKey`) *and* Azure AD login (see [Access](#access)) — the NSG still allows SSH from any source IP, so treat this as a known gap, not a solved one
 - NSG opens only 22 / 80 / 443
-- Secrets are stored in Pulumi ESC (infrastructure) and Coolify per-app env vars (applications)
+- Infrastructure secrets (SSH key, DB password) are encrypted in `Pulumi.prod.yaml` with a shared passphrase (`passphrase` secrets provider); application secrets live in Coolify per-app env vars
 - HTTPS is automatic for any domain configured on a Coolify resource
+
+## Access
+
+Members of the **TI Ameciclo** Entra ID group can access the VM and database using their own Azure AD identity — no shared SSH key or DB password needed, and access can be revoked per-person by removing them from the group.
+
+```bash
+# SSH into the VM
+az extension add --name ssh   # one-time
+az ssh vm --resource-group ameciclo-rg-prod --name ameciclo-coolify-vm
+
+# Connect to Postgres with an AAD token instead of the shared psqladmin password
+TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
+psql "host=$(pulumi stack output postgresqlServerFqdn) dbname=postgres user=<your-email> sslmode=require" # use $TOKEN as the password when prompted
+```
+
+To add or remove someone's access, add/remove them from the `TI Ameciclo` group in Entra ID (`az ad group member add/remove --group "TI Ameciclo" --member-id <object-id>`) — no Pulumi change needed.
+
+## CI
+
+PRs touching `infrastructure/pulumi/**` automatically run `pulumi preview` ([`.github/workflows/pulumi-preview.yml`](.github/workflows/pulumi-preview.yml)) and comment the diff. It authenticates to Azure via OIDC (no stored client secret) — a federated Entra ID app scoped to this repo's PRs, with `Reader` on the resource group and `Storage Blob Data Contributor` on the `pulumi-state` container only. Runs only for PRs from within the org: GitHub withholds the OIDC token and secrets from fork-originated PRs by default, so this fails closed rather than exposing Azure access to outside contributors.
 
 ## Common operations
 

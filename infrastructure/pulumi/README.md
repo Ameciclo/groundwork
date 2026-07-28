@@ -34,39 +34,20 @@ pulumi up
 - [Node.js](https://nodejs.org/) 18+
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) v3.139.0+
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (for auto-detection)
-- Azure Service Principal
 - SSH key pair
-- Pulumi Cloud account (for ESC environments)
+- The stack passphrase (ask an existing admin) and membership in the `TI Ameciclo` Entra ID group
+
+State and secrets are self-managed — no Pulumi Cloud account needed. State lives in the `pulumi-state` container of the `ameciclostorprod` Azure Storage account; secrets are encrypted locally with a shared passphrase.
 
 ## ⚙️ Setup
 
-### Step 1: Create Pulumi ESC Environment
+### Step 1: Log in to the state backend
 
-Pulumi ESC (Environments, Secrets, and Configuration) centralizes all your secrets and configuration.
-
-1. **Login to Pulumi Cloud:**
-   ```bash
-   pulumi login
-   ```
-
-2. **Create the ESC environment:**
-   ```bash
-   # Create the environment
-   pulumi env init <your-org>/infrastructure-prod
-
-   # Edit the environment
-   pulumi env edit <your-org>/infrastructure-prod
-   ```
-
-3. **Copy the contents from `esc/prod.yaml` into the environment editor**
-
-4. **Update the placeholder values:**
-   - Replace `ssh.publicKey` with your actual SSH public key:
-     ```bash
-     cat ~/.ssh/id_rsa.pub
-     ```
-
-5. **Save the environment**
+```bash
+pulumi login "azblob://pulumi-state?storage_account=ameciclostorprod"
+export PULUMI_CONFIG_PASSPHRASE="<ask an admin>"
+pulumi stack select prod   # stack already exists — don't `stack init` a new one
+```
 
 ### Step 2: Install Dependencies and Deploy
 
@@ -139,12 +120,16 @@ pulumi config set azure-native:location westus2
 pulumi config set environment staging
 ```
 
+## 🔑 Access
+
+TI Ameciclo group members can SSH into the VM and connect to Postgres with their own Azure AD identity instead of the shared SSH key / DB password — see [Access](../../README.md#access) in the root README.
+
 ## 📤 Outputs
 
 | Output | Description |
 |--------|-------------|
-| `k3sPublicIp` | VM public IP address |
-| `k3sSshCommand` | SSH connection command |
+| `coolifyPublicIp` | VM public IP address |
+| `coolifySshCommand` | SSH connection command |
 | `postgresqlServerFqdn` | Database server FQDN |
 | `resourceGroupName` | Azure resource group |
 
@@ -192,13 +177,13 @@ The PostgreSQL server is **private** (VNet-only access). Database users must be 
 
 **Step 1: SSH into the K3s VM**
 ```bash
-ssh azureuser@$(pulumi stack output k3sPublicIp)
+ssh azureuser@$(pulumi stack output coolifyPublicIp)
 ```
 
 **Step 2: Copy the database user creation script**
 ```bash
 # On your local machine
-scp scripts/create-database-users.sh azureuser@$(pulumi stack output k3sPublicIp):~/
+scp scripts/create-database-users.sh azureuser@$(pulumi stack output coolifyPublicIp):~/
 ```
 
 **Step 3: Run the script on the VM**

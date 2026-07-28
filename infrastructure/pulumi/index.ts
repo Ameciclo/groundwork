@@ -9,6 +9,11 @@ const location = config.get("location") || "westus3";
 const projectName = config.get("projectName") || "ameciclo";
 const environment = config.get("environment") || "production";
 
+// Entra ID (Azure AD) group granted VM SSH login + Postgres admin access
+// (currently "TI Ameciclo", Ameciclo's IT managers group)
+const entraAdminGroupObjectId = config.require("entraAdminGroupObjectId");
+const clientConfig = azure.authorization.getClientConfigOutput();
+
 // Generate secure random password for PostgreSQL admin
 const postgresqlPassword = new random.RandomPassword("postgresql-admin-password", {
   length: 32,
@@ -166,7 +171,10 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     },
     availabilityZone: "1",
     authConfig: {
-      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuthEnum.Disabled,
+      // Enabled alongside passwordAuth: the running apps (Strapi/Atlas/Zitadel)
+      // keep using their own password-based DB users; this only adds
+      // Entra ID login for human admin access via the TI Ameciclo group.
+      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuthEnum.Enabled,
       passwordAuth: azure.dbforpostgresql.PasswordAuthEnum.Enabled,
     },
     dataEncryption: {
@@ -198,6 +206,20 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     tags: commonTags,
   },
   { dependsOn: [postgresqlDnsLink] },
+);
+
+// Postgres AAD admin — lets TI Ameciclo group members connect with their own
+// Azure AD identity instead of the shared psqladmin password.
+const postgresqlAadAdmin = new azure.dbforpostgresql.Administrator(
+  "postgresql-aad-admin",
+  {
+    serverName: postgresqlServer.name,
+    resourceGroupName: resourceGroup.name,
+    objectId: entraAdminGroupObjectId,
+    principalName: "TI Ameciclo",
+    principalType: azure.dbforpostgresql.PrincipalType.Group,
+    tenantId: clientConfig.tenantId,
+  },
 );
 
 // PostgreSQL Databases
@@ -287,6 +309,24 @@ const coolifyVm = createCoolifyVm("k3s", {
   projectName: projectName,
   tags: commonTags,
 });
+
+// Grants TI Ameciclo group members `az ssh vm` access via their own Azure AD
+// identity (see the AADSSHLoginForLinux extension in vm.ts).
+const vmSshRoleAssignmentId = new random.RandomUuid("vm-ssh-role-assignment-id");
+const vmSshRoleAssignment = new azure.authorization.RoleAssignment(
+  "vm-ssh-admin-login",
+  {
+    roleAssignmentName: vmSshRoleAssignmentId.result,
+    scope: coolifyVm.vm.id,
+    principalId: entraAdminGroupObjectId,
+    principalType: azure.authorization.PrincipalType.Group,
+    // Built-in "Virtual Machine Administrator Login" role
+    roleDefinitionId: clientConfig.subscriptionId.apply(
+      (subscriptionId) =>
+        `/subscriptions/${subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/1c0163c0-47e6-4577-8991-ea5c82e286e4`,
+    ),
+  },
+);
 
 // Export important values
 export const resourceGroupName = resourceGroup.name;

@@ -28,6 +28,7 @@ export function createCoolifyVm(
   vm: azure.compute.VirtualMachine;
   publicIp: azure.network.PublicIPAddress;
   networkInterface: azure.network.NetworkInterface;
+  aadSshExtension: azure.compute.VirtualMachineExtension;
 } {
   const config = new pulumi.Config();
 
@@ -77,6 +78,10 @@ export function createCoolifyVm(
     vmName: `${args.projectName}-coolify-vm`,
     resourceGroupName: args.resourceGroupName,
     location: args.location,
+    // Required by the AADSSHLoginForLinux extension below.
+    identity: {
+      type: azure.compute.ResourceIdentityType.SystemAssigned,
+    },
     hardwareProfile: {
       vmSize: "Standard_B4as_v2",  // 4 vCPU, 16GB RAM
     },
@@ -126,9 +131,29 @@ export function createCoolifyVm(
     },
   });
 
+  // Lets members of the configured Entra ID group (see entraAdminGroupObjectId
+  // in index.ts) SSH in with `az ssh vm` using their own Azure AD identity,
+  // instead of the shared SSH keypair above.
+  const aadSshExtension = new azure.compute.VirtualMachineExtension(
+    `${name}-aadssh`,
+    {
+      vmExtensionName: "AADSSHLoginForLinux",
+      resourceGroupName: args.resourceGroupName,
+      vmName: vm.name,
+      location: args.location,
+      publisher: "Microsoft.Azure.ActiveDirectory",
+      type: "AADSSHLoginForLinux",
+      typeHandlerVersion: "1.0",
+      autoUpgradeMinorVersion: true,
+      tags: args.tags,
+    },
+    { dependsOn: [vm] },
+  );
+
   return {
     vm,
     publicIp,
     networkInterface,
+    aadSshExtension,
   };
 }

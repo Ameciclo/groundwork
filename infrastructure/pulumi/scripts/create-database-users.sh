@@ -2,13 +2,18 @@
 set -e
 
 # Create PostgreSQL Database Users
-# This script must be run from the K3s VM which has VNet access to the private PostgreSQL server
+#
+# Postgres is VNet-only -- run this through an SSH tunnel to the VM, or
+# from the VM itself. See docs/connecting.md for the tunnel command.
 #
 # Usage:
-#   ssh azureuser@<k3s-vm-ip>
-#   # Copy this script to the VM
-#   chmod +x create-database-users.sh
 #   POSTGRES_ADMIN_PASSWORD='<password>' ./create-database-users.sh
+#
+# Note: this creates USERS (and grants) for atlas/strapi/zitadel, whose
+# DATABASES are created by Pulumi (index.ts). The `passbolt` and
+# `superset` databases are NOT Pulumi-managed (created out-of-band at
+# some point) -- this script only manages their users/grants, same as
+# the others; it assumes both databases already exist.
 
 echo "=========================================="
 echo "PostgreSQL Database Users Setup"
@@ -30,6 +35,8 @@ PG_ADMIN_USER="psqladmin"
 STRAPI_PASSWORD=$(openssl rand -base64 32)
 ATLAS_PASSWORD=$(openssl rand -base64 32)
 ZITADEL_PASSWORD=$(openssl rand -base64 32)
+PASSBOLT_PASSWORD=$(openssl rand -base64 32)
+SUPERSET_PASSWORD=$(openssl rand -base64 32)
 
 echo "Step 1: Creating database users..."
 echo ""
@@ -75,6 +82,34 @@ PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
   -U "$PG_ADMIN_USER" \
   -d postgres \
   -c "ALTER USER zitadel_user WITH PASSWORD '$ZITADEL_PASSWORD';"
+
+# Create Passbolt user
+echo "Creating passbolt_user..."
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d postgres \
+  -c "CREATE USER passbolt_user WITH PASSWORD '$PASSBOLT_PASSWORD';" 2>/dev/null || echo "  User already exists, updating password..."
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d postgres \
+  -c "ALTER USER passbolt_user WITH PASSWORD '$PASSBOLT_PASSWORD';"
+
+# Create Superset user
+echo "Creating superset_user..."
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d postgres \
+  -c "CREATE USER superset_user WITH PASSWORD '$SUPERSET_PASSWORD';" 2>/dev/null || echo "  User already exists, updating password..."
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d postgres \
+  -c "ALTER USER superset_user WITH PASSWORD '$SUPERSET_PASSWORD';"
 
 echo ""
 echo "Step 2: Granting database permissions..."
@@ -178,6 +213,46 @@ PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
   -d zitadel \
   -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO zitadel_user;"
 
+# Grant permissions for Passbolt
+echo "Granting permissions to passbolt_user on passbolt database..."
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d passbolt \
+  -c "GRANT ALL PRIVILEGES ON DATABASE passbolt TO passbolt_user;"
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d passbolt \
+  -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO passbolt_user;"
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d passbolt \
+  -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO passbolt_user;"
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d passbolt \
+  -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO passbolt_user;"
+
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d passbolt \
+  -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO passbolt_user;"
+
+# Grant permissions for Superset (superset_user already owns the database)
+echo "Granting permissions to superset_user on superset database..."
+PGSSLMODE=require PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
+  -h "$PG_HOST" \
+  -U "$PG_ADMIN_USER" \
+  -d superset \
+  -c "GRANT ALL PRIVILEGES ON DATABASE superset TO superset_user;"
+
 echo ""
 echo "=========================================="
 echo "✅ Database users created successfully!"
@@ -202,4 +277,16 @@ echo "  Host: $PG_HOST"
 echo "  Database: zitadel"
 echo "  User: zitadel_user"
 echo "  Password: $ZITADEL_PASSWORD"
+echo ""
+echo "Passbolt Database Credentials:"
+echo "  Host: $PG_HOST"
+echo "  Database: passbolt"
+echo "  User: passbolt_user"
+echo "  Password: $PASSBOLT_PASSWORD"
+echo ""
+echo "Superset Database Credentials:"
+echo "  Host: $PG_HOST"
+echo "  Database: superset"
+echo "  User: superset_user"
+echo "  Password: $SUPERSET_PASSWORD"
 echo ""

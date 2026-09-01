@@ -1,0 +1,41 @@
+---
+# ArgoCD Application for PostgreSQL Backup CronJob
+# This manages automated backups of Azure PostgreSQL to external S3 storage
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres-backup
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/component: backup
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/Ameciclo/groundwork.git
+    targetRevision: main
+    path: kubernetes/infrastructure/backup
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backup
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

@@ -1,0 +1,158 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: backup
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/part-of: infrastructure
+    app.kubernetes.io/component: backup
+spec:
+  # Run every day at 3:00 AM UTC (00:00 BRT)
+  schedule: "0 3 * * *"
+  # Keep last 3 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      # Auto-cleanup after 1 day
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              # Using Azure CLI image which includes PostgreSQL client
+              image: mcr.microsoft.com/azure-cli:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+
+                  echo "=========================================="
+                  echo "PostgreSQL Backup to Azure Blob - $(date)"
+                  echo "=========================================="
+
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_DIR="/tmp/backups"
+                  mkdir -p $BACKUP_DIR
+
+                  # Install PostgreSQL client
+                  echo "Installing PostgreSQL client..."
+                  apt-get update && apt-get install -y postgresql-client-16 --quiet
+
+                  # Backup each database
+                  for DB in atlas strapi zitadel; do
+                    echo ""
+                    echo ">>> Backing up database: $DB"
+
+                    PGPASSWORD=$PGPASSWORD pg_dump \
+                      -h $PGHOST \
+                      -U $PGUSER \
+                      -d $DB \
+                      --format=custom \
+                      --verbose \
+                      --file=$BACKUP_DIR/${DB}_${TIMESTAMP}.dump
+
+                    echo ">>> Backup size: $(du -h $BACKUP_DIR/${DB}_${TIMESTAMP}.dump | cut -f1)"
+                  done
+
+                  echo ""
+                  echo ">>> Uploading to Azure Blob Storage..."
+
+                  # Upload each backup to Azure Blob Storage
+                  for DUMP_FILE in $BACKUP_DIR/*.dump; do
+                    FILENAME=$(basename $DUMP_FILE)
+                    echo "Uploading: $FILENAME"
+
+                    az storage blob upload \
+                      --account-name $AZURE_STORAGE_ACCOUNT \
+                      --account-key "$AZURE_STORAGE_KEY" \
+                      --container-name $AZURE_CONTAINER \
+                      --name "postgres/${TIMESTAMP}/${FILENAME}" \
+                      --file $DUMP_FILE \
+                      --overwrite
+                  done
+
+                  echo ""
+                  echo ">>> Cleaning up old backups (keeping last ${RETENTION_DAYS} days)..."
+
+                  # Calculate cutoff date
+                  CUTOFF_DATE=$(date -d "-${RETENTION_DAYS} days" +%Y%m%d)
+
+                  # List and delete old backup folders
+                  az storage blob list \
+                    --account-name $AZURE_STORAGE_ACCOUNT \
+                    --account-key "$AZURE_STORAGE_KEY" \
+                    --container-name $AZURE_CONTAINER \
+                    --prefix "postgres/" \
+                    --query "[].name" -o tsv | \
+                  while read -r BLOB_NAME; do
+                    # Extract date from path (postgres/YYYYMMDD_HHMMSS/file.dump)
+                    FOLDER_DATE=$(echo "$BLOB_NAME" | cut -d'/' -f2 | cut -d'_' -f1)
+
+                    if [ -n "$FOLDER_DATE" ] && [ "$FOLDER_DATE" -lt "$CUTOFF_DATE" ] 2>/dev/null; then
+                      echo "Deleting old backup: $BLOB_NAME"
+                      az storage blob delete \
+                        --account-name $AZURE_STORAGE_ACCOUNT \
+                        --account-key "$AZURE_STORAGE_KEY" \
+                        --container-name $AZURE_CONTAINER \
+                        --name "$BLOB_NAME"
+                    fi
+                  done
+
+                  echo ""
+                  echo "=========================================="
+                  echo "Backup completed successfully!"
+                  echo "Location: ${AZURE_STORAGE_ACCOUNT}/${AZURE_CONTAINER}/postgres/${TIMESTAMP}/"
+                  echo "=========================================="
+              env:
+                # PostgreSQL connection (from Infisical)
+                - name: PGHOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: PGHOST
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: PGUSER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: PGPASSWORD
+                # Azure Blob Storage configuration (from Infisical)
+                - name: AZURE_STORAGE_ACCOUNT
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: AZURE_STORAGE_ACCOUNT
+                - name: AZURE_STORAGE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: AZURE_STORAGE_KEY
+                - name: AZURE_CONTAINER
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-secrets
+                      key: AZURE_CONTAINER
+                # Retention
+                - name: RETENTION_DAYS
+                  value: "30"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+

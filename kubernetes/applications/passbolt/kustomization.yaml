@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: passbolt
+
+resources:
+  - namespace.yaml
+  - ingress.yaml
+# Note: Main deployment is managed by Helm chart via ArgoCD
+# Note: Secrets are managed by Infisical (see kubernetes/infrastructure/infisical/)
+
+commonLabels:
+  app.kubernetes.io/name: passbolt
+  app.kubernetes.io/part-of: passbolt
+

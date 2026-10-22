@@ -4,6 +4,7 @@ import * as random from "@pulumi/random";
 import * as postgresql from "@pulumi/postgresql";
 import { createCoolifyVm } from "./vm";
 import { createAiAccount } from "./ai";
+import { createAgentIdentity } from "./agent-identity";
 import { cloudflareIpv4Cidrs, cidrToRange } from "./cloudflare-ips";
 
 // Get configuration
@@ -479,7 +480,18 @@ const ai = createAiAccount({
   tags: commonTags,
 });
 
+// Dedicated read-only identity for the Ameciclops agent (Reader on the prod resource group)
+const agentIdentity = createAgentIdentity({
+  resourceGroupId: resourceGroup.id,
+  subscriptionId: clientConfig.subscriptionId,
+});
+
 // Export important values
+// Ameciclops service principal. Tenant and client ID are not secrets; the client secret is
+// read by a human only: pulumi stack output ameciclopsClientSecret --show-secrets
+export const ameciclopsTenantId = clientConfig.tenantId;
+export const ameciclopsClientId = agentIdentity.app.clientId;
+export const ameciclopsClientSecret = pulumi.secret(agentIdentity.secret.value);
 export const aiEndpoint = ai.account.properties.endpoint;
 export const aiDeploymentName = ai.deployment.name;
 export const resourceGroupName = resourceGroup.name;

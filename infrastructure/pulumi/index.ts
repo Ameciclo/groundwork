@@ -3,6 +3,7 @@ import * as azure from "@pulumi/azure-native";
 import * as random from "@pulumi/random";
 import * as postgresql from "@pulumi/postgresql";
 import { createCoolifyVm } from "./vm";
+import { createAiAccount } from "./ai";
 import { cloudflareIpv4Cidrs, cidrToRange } from "./cloudflare-ips";
 
 // Get configuration
@@ -470,7 +471,17 @@ const vmSshRoleAssignment = new azure.authorization.RoleAssignment(
   },
 );
 
+// Azure AI Foundry account + model deployment for the Ameciclops agent
+const ai = createAiAccount({
+  resourceGroupName: resourceGroup.name,
+  location: location,
+  projectName: projectName,
+  tags: commonTags,
+});
+
 // Export important values
+export const aiEndpoint = ai.account.properties.endpoint;
+export const aiDeploymentName = ai.deployment.name;
 export const resourceGroupName = resourceGroup.name;
 export const resourceGroupId = resourceGroup.id;
 export const vnetName = vnet.name;

@@ -15,13 +15,6 @@ const environment = config.get("environment") || "production";
 const entraAdminGroupObjectId = config.require("entraAdminGroupObjectId");
 const clientConfig = azure.authorization.getClientConfigOutput();
 
-// Generate secure random password for PostgreSQL admin
-const postgresqlPassword = new random.RandomPassword("postgresql-admin-password", {
-  length: 32,
-  special: true,
-  overrideSpecial: "!#$%&*()-_=+[]{}<>:?",
-});
-
 // Common tags
 const commonTags = {
   Environment: environment,
@@ -55,21 +48,6 @@ const k3sSubnet = new azure.network.Subnet("k3s-subnet", {
   virtualNetworkName: vnet.name,
   addressPrefix: "10.10.1.0/24",
   serviceEndpoints: [{ service: "Microsoft.Storage" }],
-});
-
-// Database Subnet
-const databaseSubnet = new azure.network.Subnet("database-subnet", {
-  subnetName: "database-subnet",
-  resourceGroupName: resourceGroup.name,
-  virtualNetworkName: vnet.name,
-  addressPrefix: "10.10.2.0/24",
-  serviceEndpoints: [{ service: "Microsoft.Storage" }],
-  delegations: [
-    {
-      name: "fs",
-      serviceName: "Microsoft.DBforPostgreSQL/flexibleServers",
-    },
-  ],
 });
 
 // Network Security Group for K3s
@@ -149,141 +127,11 @@ const postgresqlDnsLink = new azure.privatedns.VirtualNetworkLink(
   },
 );
 
-// PostgreSQL Flexible Server
-const postgresqlServer = new azure.dbforpostgresql.Server(
-  "postgresql",
-  {
-    serverName: `${projectName}-postgres`,
-    resourceGroupName: resourceGroup.name,
-    location: location,
-    administratorLogin: "psqladmin",
-    administratorLoginPassword: postgresqlPassword.result,
-    version: azure.dbforpostgresql.PostgresMajorVersion.PostgresMajorVersion_16,
-    sku: {
-      name: "Standard_B2s",
-      tier: azure.dbforpostgresql.SkuTier.Burstable,
-    },
-    storage: {
-      storageSizeGB: 32,
-      autoGrow: azure.dbforpostgresql.StorageAutoGrow.Disabled,
-      iops: 120,
-      tier: azure.dbforpostgresql.AzureManagedDiskPerformanceTier.P4,
-      type: "",
-    },
-    availabilityZone: "1",
-    authConfig: {
-      // Enabled alongside passwordAuth: the running apps (Strapi/Atlas)
-      // keep using their own password-based DB users; this only adds
-      // Entra ID login for human admin access via the TI Ameciclo group.
-      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuth.Enabled,
-      passwordAuth: azure.dbforpostgresql.PasswordAuth.Enabled,
-    },
-    // dataEncryption is intentionally omitted: it's immutable after server
-    // creation (already "SystemManaged"/service-managed keys, set at
-    // creation time and can never change), and azure-native 3.23.0 has a
-    // provider bug updating this field -- the API rejects the PATCH with
-    // "InvalidResourceIdSegment" on properties.dataEncryption.type
-    // (confirmed: server is healthy, untouched, still SystemManaged).
-    // Not managing it here avoids re-triggering that on every future
-    // `pulumi up`, since the value can never actually differ anyway.
-    highAvailability: {
-      mode: azure.dbforpostgresql.PostgreSqlFlexibleServerHighAvailabilityMode.Disabled,
-    },
-    maintenanceWindow: {
-      customWindow: "Disabled",
-      dayOfWeek: 0,
-      startHour: 0,
-      startMinute: 0,
-    },
-    replica: {
-      role: azure.dbforpostgresql.ReplicationRole.Primary,
-    },
-    replicationRole: azure.dbforpostgresql.ReplicationRole.Primary,
-    network: {
-      delegatedSubnetResourceId: databaseSubnet.id,
-      privateDnsZoneArmResourceId: postgresqlDnsZone.id,
-      publicNetworkAccess:
-        azure.dbforpostgresql.ServerPublicNetworkAccessState.Disabled,
-    },
-    backup: {
-      backupRetentionDays: 7,
-      geoRedundantBackup: azure.dbforpostgresql.GeoRedundantBackup.Disabled,
-    },
-    tags: commonTags,
-  },
-  {
-    dependsOn: [postgresqlDnsLink],
-    // See the dataEncryption comment above -- omitting the input alone
-    // still makes Pulumi want to unset it (same PATCH bug, opposite
-    // direction). ignoreChanges stops Pulumi from touching it at all.
-    ignoreChanges: ["dataEncryption"],
-  },
-);
-
-// Postgres AAD admin — lets TI Ameciclo group members connect with their own
-// Azure AD identity instead of the shared psqladmin password.
-const postgresqlAadAdmin = new azure.dbforpostgresql.Administrator(
-  "postgresql-aad-admin",
-  {
-    serverName: postgresqlServer.name,
-    resourceGroupName: resourceGroup.name,
-    objectId: entraAdminGroupObjectId,
-    principalName: "TI Ameciclo",
-    principalType: azure.dbforpostgresql.PrincipalType.Group,
-    tenantId: clientConfig.tenantId,
-  },
-);
-
-// PostgreSQL Databases
-const atlasDatabase = new azure.dbforpostgresql.Database("atlas-db", {
-  databaseName: "atlas",
-  serverName: postgresqlServer.name,
-  resourceGroupName: resourceGroup.name,
-  charset: "UTF8",
-  collation: "en_US.utf8",
-});
-
-const strapiDatabase = new azure.dbforpostgresql.Database("strapi-db", {
-  databaseName: "strapi",
-  serverName: postgresqlServer.name,
-  resourceGroupName: resourceGroup.name,
-  charset: "UTF8",
-  collation: "en_US.utf8",
-});
-
-const amecicloDatabase = new azure.dbforpostgresql.Database("ameciclo-db", {
-  databaseName: "ameciclo",
-  serverName: postgresqlServer.name,
-  resourceGroupName: resourceGroup.name,
-  charset: "UTF8",
-  collation: "en_US.utf8",
-});
-
-// PostgreSQL roles + grants.
-//
-// The server is VNet-only, so the postgresql provider connects through an SSH
-// tunnel opened by the operator (see docs/connecting.md):
-//   az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
-//     -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
 // Roles are always declared (never gate them behind a flag: leaving them out
 // makes Pulumi delete them). The provider only connects when a role or grant
 // actually changes, so unrelated `pulumi up` / `preview` runs (including CI)
 // don't need the tunnel.
-const postgresTunnelPort = config.getNumber("postgresTunnelPort") ?? 15432;
-
-const postgresProvider = new postgresql.Provider("postgres", {
-  host: "localhost",
-  port: postgresTunnelPort,
-  // Logs in as the Entra admin group (see docs/connecting.md). The password
-  // is a short-lived AAD token, read by the provider from PGPASSWORD:
-  //   PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
-  //     --query accessToken -o tsv) pulumi up
-  username: "TI Ameciclo",
-  sslmode: "require",
-  // Azure's admin isn't a real superuser
-  superuser: false,
-});
-
+//
 // Creates a login role (default `<name>_user`) with a generated password and
 // grants it access to `database`. Read-only roles get SELECT only. Returns the password so it can
 // be exported and pasted into the app's Coolify env vars.
@@ -294,11 +142,10 @@ function createDbRole(
     readOnly?: boolean;
     roleName?: string;
     dependsOn?: pulumi.Resource[];
-    provider?: postgresql.Provider;
-  } = {},
+    provider: postgresql.Provider;
+  },
 ) {
-  const provider = opts.provider ?? postgresProvider;
-  const resourceOpts = { provider, dependsOn: opts.dependsOn };
+  const resourceOpts = { provider: opts.provider, dependsOn: opts.dependsOn };
   const password = new random.RandomPassword(`${name}-db-password`, {
     length: 32,
     special: false,
@@ -345,25 +192,14 @@ function createDbRole(
   return pulumi.secret(password.result);
 }
 
-// `ameciclo` role on the `ameciclo` database.
-const amecicloDbPassword = createDbRole("ameciclo", "ameciclo", {
-  roleName: "ameciclo",
-  dependsOn: [amecicloDatabase],
-});
-
-
-
-
-
 // ---------------------------------------------------------------------------
-// Public PostgreSQL server (migration target)
+// PostgreSQL server
 //
-// A VNet-integrated Flexible Server can never expose a public endpoint (the
-// networking mode is fixed at creation), so this is a second server that runs
-// alongside the private one until the data is migrated. It has a public
-// endpoint (firewalled) AND a Private Endpoint in the VM subnet, so Coolify
-// apps keep talking to it over the VNet while external clients (Cloudflare
-// Hyperdrive) use the public endpoint. See docs/postgres-migration.md.
+// A public endpoint (firewalled) AND a Private Endpoint in the VM subnet, so
+// Coolify apps talk to it over the VNet while external clients (Cloudflare
+// Hyperdrive) can use the public endpoint. It replaced the old VNet-integrated
+// server, which could never expose a public endpoint (Azure fixes the
+// networking mode at creation). See docs/postgres-migration.md.
 //
 // Public access is closed by default: nothing can connect from the internet
 // until you set `postgresAllowedIps` and/or `postgresAllowAllIps` (below).
@@ -388,7 +224,7 @@ const postgresqlPubServer = new azure.dbforpostgresql.Server(
     location: location,
     administratorLogin: "psqladmin",
     administratorLoginPassword: postgresqlPubPassword.result,
-    version: azure.dbforpostgresql.PostgresMajorVersion.PostgresMajorVersion_16,
+    version: azure.dbforpostgresql.PostgresMajorVersion.PostgresMajorVersion_18,
     sku: {
       name: "Standard_B2s",
       tier: azure.dbforpostgresql.SkuTier.Burstable,
@@ -430,7 +266,9 @@ const postgresqlPubServer = new azure.dbforpostgresql.Server(
     },
     tags: commonTags,
   },
-  // Same azure-native dataEncryption PATCH bug as the private server above.
+  // dataEncryption is immutable after creation, and azure-native 3.23.0 has a
+  // provider bug updating it (the API rejects the PATCH with
+  // "InvalidResourceIdSegment"). ignoreChanges stops Pulumi from touching it.
   { ignoreChanges: ["dataEncryption"] },
 );
 
@@ -515,7 +353,9 @@ const pubDatabases = ["strapi", "atlas", "ameciclo"].map(
 );
 
 // Roles on the new server go through a second tunnel (port 15433) to the new
-// server's FQDN, same AAD token as the private server's provider:
+// server's FQDN, with an AAD token as the password:
+//   PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
+//     --query accessToken -o tsv) pulumi up
 //   az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
 //     -N -L 15433:ameciclo-postgres-pub.postgres.database.azure.com:5432
 const postgresPubTunnelPort = config.getNumber("postgresPubTunnelPort") ?? 15433;
@@ -620,9 +460,6 @@ export const resourceGroupId = resourceGroup.id;
 export const vnetName = vnet.name;
 export const vnetId = vnet.id;
 export const vmSubnetId = k3sSubnet.id;
-export const databaseSubnetId = databaseSubnet.id;
-export const postgresqlServerName = postgresqlServer.name;
-export const postgresqlServerFqdn = postgresqlServer.fullyQualifiedDomainName;
 export const coolifyVmId = coolifyVm.vm.id;
 export const coolifyVmName = coolifyVm.vm.name;
 export const coolifyPublicIp = coolifyVm.publicIp.ipAddress;
@@ -637,13 +474,7 @@ export const mediaContainerName = mediaContainer.name;
 export const backupsContainerName = backupsContainer.name;
 export const logsContainerName = logsContainer.name;
 
-// PostgreSQL admin credentials (encrypted in Pulumi state)
-export const postgresqlAdminUsername = pulumi.output("psqladmin");
-export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
-
-// pulumi stack output amecicloDbPassword --show-secrets 
-export { amecicloDbPassword };
-
-// Public PostgreSQL server (migration target; see docs/postgres-migration.md)
+// PostgreSQL server (see docs/postgres-migration.md). Role passwords:
+//   pulumi stack output strapiPubDbPassword --show-secrets
 export const postgresqlPubServerFqdn = postgresqlPubServer.fullyQualifiedDomainName;
 export { strapiPubDbPassword, atlasPubDbPassword, amecicloPubDbPassword };

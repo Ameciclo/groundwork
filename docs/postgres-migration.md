@@ -1,8 +1,8 @@
 # Migrating to the public PostgreSQL server
 
-The original server (`ameciclo-postgres`) is VNet-integrated: it has no public endpoint and never can (Azure fixes the networking mode at creation). `ameciclo-postgres-pub` runs next to it with a public endpoint, firewalled, plus a Private Endpoint in the VM subnet, so Coolify apps keep using a private IP and external clients (Cloudflare Hyperdrive) can use the public one.
+> **Status: done.** The data was copied from the original server to `ameciclo-postgres-pub` (PostgreSQL 18), Strapi was switched over, and the original server (`ameciclo-postgres`) was removed. This page is kept as the record of how it was done and as a template for a future move. Steps 1-3 and 5 are history; step 4 (public access) is still how you open the server to the internet.
 
-Both servers exist until the cutover is done. The old one is untouched by all of this until the last step.
+The original server (`ameciclo-postgres`) was VNet-integrated: it had no public endpoint and never could (Azure fixes the networking mode at creation). `ameciclo-postgres-pub` has a public endpoint, firewalled, plus a Private Endpoint in the VM subnet, so Coolify apps use a private IP and external clients (Cloudflare Hyperdrive) can use the public one.
 
 ## 1. Create the new server
 

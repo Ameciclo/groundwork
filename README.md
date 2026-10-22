@@ -42,11 +42,11 @@ The provider only connects to Postgres when a role or grant actually changes. Un
 ```bash
 # terminal 1: tunnel (see docs/connecting.md)
 az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
-  -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
+  -N -L 15433:ameciclo-postgres-pub.postgres.database.azure.com:5432
 
 # terminal 2, from infrastructure/pulumi
 PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv) pulumi up
-pulumi stack output amecicloDbPassword --show-secrets   # a role's password
+pulumi stack output amecicloPubDbPassword --show-secrets   # a role's password
 ```
 
 The provider signs in as the `TI Ameciclo` group using a short-lived AAD token, not a stored password.
@@ -123,8 +123,8 @@ pulumi stack output coolifyPublicIp
 | Output | Description |
 |---|---|
 | `coolifyPublicIp` / `coolifySshCommand` | VM public IP / ready-to-use SSH command |
-| `postgresqlServerFqdn` | Database server FQDN |
-| `postgresqlAdminUsername` / `postgresqlAdminPassword` | Shared admin credential (`--show-secrets` to reveal) — prefer AAD login, see [Access](#access) |
+| `postgresqlPubServerFqdn` | Database server FQDN |
+| `strapiPubDbPassword` / `atlasPubDbPassword` / `amecicloPubDbPassword` | App role passwords (`--show-secrets` to reveal) |
 | `resourceGroupName` | Azure resource group |
 | `storageAccountName` | Blob storage account |
 

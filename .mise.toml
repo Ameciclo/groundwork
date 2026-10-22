@@ -1,3 +1,8 @@
 [tools]
 # Node.js for Pulumi infrastructure and development
 node = "20.18.0"
+
+[env]
+# Empty on purpose: Pulumi secrets are protected by Entra ID access to the state
+# container, not a shared passphrase. The variable must be set, even if empty.
+PULUMI_CONFIG_PASSPHRASE = ""

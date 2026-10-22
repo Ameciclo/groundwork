@@ -35,7 +35,9 @@ Atlas is not currently deployed; its database still exists in Azure Postgres and
 
 ### Databases and users
 
-Databases are `azure.dbforpostgresql.Database` resources in `index.ts`. Login roles are created with the `createDbRole()` helper (`@pulumi/postgresql`), which generates a password and grants access. Roles need a connection to the private server, so they are opt-in:
+Databases are `azure.dbforpostgresql.Database` resources in `index.ts`. Login roles are created with the `createDbRole()` helper (`@pulumi/postgresql`), which generates a password and grants access. Roles must always stay declared in `index.ts`: removing one makes the next `pulumi up` drop it from the database.
+
+The provider only connects to Postgres when a role or grant actually changes. Unrelated `pulumi up`/`preview` runs (and CI) don't need a tunnel. To add or change a role, open the tunnel and pass an AAD token:
 
 ```bash
 # terminal 1: tunnel (see docs/connecting.md)
@@ -43,9 +45,8 @@ az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
   -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
 
 # terminal 2, from infrastructure/pulumi
-pulumi config set manageDbRoles true
 PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv) pulumi up
-pulumi config rm manageDbRoles   # keeps CI preview working
+pulumi stack output amecicloDbPassword --show-secrets   # a role's password
 ```
 
 The provider signs in as the `TI Ameciclo` group using a short-lived AAD token, not a stored password.
@@ -70,9 +71,8 @@ groundwork/
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (logged in)
 - SSH key pair
 - Membership in the `TI Ameciclo` Entra ID group (for `az storage`/`az ssh`/AAD-based DB access — see [Access](#access))
-- The stack passphrase (ask an existing admin — stored in Ameciclo's shared password manager)
 
-State and secrets are self-managed (no Pulumi Cloud account needed): state lives in the `pulumi-state` container of the `ameciclostorprod` Azure Storage account, and secrets are encrypted locally with a shared passphrase.
+State and secrets are self-managed (no Pulumi Cloud account needed): state lives in the `pulumi-state` container of the `ameciclostorprod` Azure Storage account, and secrets use Pulumi's `passphrase` provider with an **empty passphrase**, so there is no shared secret to keep or lose (see [Security](#security)).
 
 ## Initial setup
 
@@ -83,8 +83,9 @@ npm install
 # Log in to the self-managed state backend (one-time per machine)
 pulumi login "azblob://pulumi-state?storage_account=ameciclostorprod"
 
-# Set the stack passphrase (ask an existing admin)
-export PULUMI_CONFIG_PASSPHRASE="<ask an admin>"
+# The stack uses an empty passphrase (see Security). The variable must still be
+# *set* (to empty) in every shell. mise sets it for you via .mise.toml.
+export PULUMI_CONFIG_PASSPHRASE=""
 
 # Select the existing stack (already initialized — don't `stack init` a new one)
 pulumi stack select prod
@@ -160,7 +161,7 @@ Coolify-provided Traefik issues Let's Encrypt certs via HTTP-01 challenge, which
 - PostgreSQL is private (VNet-only)
 - SSH accepts a shared keypair (`adminSshPublicKey`) *and* Azure AD login (see [Access](#access)) — the NSG still allows SSH from any source IP, so treat this as a known gap, not a solved one
 - NSG opens only 22 / 80 / 443
-- Infrastructure secrets (SSH key, DB password) are encrypted in `Pulumi.prod.yaml` with a shared passphrase (`passphrase` secrets provider); application secrets live in Coolify per-app env vars
+- Infrastructure secrets (SSH key, DB password) are encrypted in `Pulumi.prod.yaml` and the state with an **empty passphrase**. The real protection is Entra ID: only members of `TI Ameciclo` can read the `pulumi-state` blob container, so state secrets are exactly as exposed as the group. Keep that container's RBAC limited to the group. Application secrets live in Coolify per-app env vars
 - HTTPS is automatic for any domain configured on a Coolify resource
 
 ## Access

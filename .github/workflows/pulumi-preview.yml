@@ -28,7 +28,8 @@ jobs:
       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      # Empty on purpose: access to the state is controlled by Entra ID (see README, Security)
+      PULUMI_CONFIG_PASSPHRASE: ""
     steps:
       - uses: actions/checkout@v4
 

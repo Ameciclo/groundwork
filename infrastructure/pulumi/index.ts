@@ -259,32 +259,30 @@ const amecicloDatabase = new azure.dbforpostgresql.Database("ameciclo-db", {
   collation: "en_US.utf8",
 });
 
-// PostgreSQL roles + grants (opt-in).
+// PostgreSQL roles + grants.
 //
 // The server is VNet-only, so the postgresql provider connects through an SSH
 // tunnel opened by the operator (see docs/connecting.md):
 //   az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
 //     -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
-// Gated behind `manageDbRoles` so `pulumi preview` (e.g. CI, which can't reach
-// the server) works without the tunnel. Enable per-run:
-//   pulumi config set manageDbRoles true
-const manageDbRoles = config.getBoolean("manageDbRoles") ?? false;
+// Roles are always declared (never gate them behind a flag: leaving them out
+// makes Pulumi delete them). The provider only connects when a role or grant
+// actually changes, so unrelated `pulumi up` / `preview` runs (including CI)
+// don't need the tunnel.
 const postgresTunnelPort = config.getNumber("postgresTunnelPort") ?? 15432;
 
-const postgresProvider = manageDbRoles
-  ? new postgresql.Provider("postgres", {
-      host: "localhost",
-      port: postgresTunnelPort,
-      // Logs in as the Entra admin group (see docs/connecting.md). The password
-      // is a short-lived AAD token, read by the provider from PGPASSWORD:
-      //   PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
-      //     --query accessToken -o tsv) pulumi up
-      username: "TI Ameciclo",
-      sslmode: "require",
-      // Azure's admin isn't a real superuser
-      superuser: false,
-    })
-  : undefined;
+const postgresProvider = new postgresql.Provider("postgres", {
+  host: "localhost",
+  port: postgresTunnelPort,
+  // Logs in as the Entra admin group (see docs/connecting.md). The password
+  // is a short-lived AAD token, read by the provider from PGPASSWORD:
+  //   PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
+  //     --query accessToken -o tsv) pulumi up
+  username: "TI Ameciclo",
+  sslmode: "require",
+  // Azure's admin isn't a real superuser
+  superuser: false,
+});
 
 // Creates a login role (default `<name>_user`) with a generated password and
 // grants it access to `database`. Read-only roles get SELECT only. Returns the password so it can
@@ -298,9 +296,6 @@ function createDbRole(
     dependsOn?: pulumi.Resource[];
   } = {},
 ) {
-  if (!postgresProvider) {
-    throw new Error("createDbRole requires `pulumi config set manageDbRoles true`");
-  }
   const provider = postgresProvider;
   const resourceOpts = { provider, dependsOn: opts.dependsOn };
   const password = new random.RandomPassword(`${name}-db-password`, {
@@ -349,14 +344,11 @@ function createDbRole(
   return pulumi.secret(password.result);
 }
 
-// `ameciclo` role on the `ameciclo` database (only created when manageDbRoles
-// is enabled).
-const amecicloDbPassword = manageDbRoles
-  ? createDbRole("ameciclo", "ameciclo", {
-      roleName: "ameciclo",
-      dependsOn: [amecicloDatabase],
-    })
-  : undefined;
+// `ameciclo` role on the `ameciclo` database.
+const amecicloDbPassword = createDbRole("ameciclo", "ameciclo", {
+  roleName: "ameciclo",
+  dependsOn: [amecicloDatabase],
+});
 
 
 
@@ -466,5 +458,5 @@ export const logsContainerName = logsContainer.name;
 export const postgresqlAdminUsername = pulumi.output("psqladmin");
 export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
 
-// pulumi stack output amecicloDbPassword --show-secrets (set when manageDbRoles is enabled)
+// pulumi stack output amecicloDbPassword --show-secrets 
 export { amecicloDbPassword };

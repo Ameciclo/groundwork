@@ -88,14 +88,10 @@ else
     echo "✅ Already logged in to the state backend"
 fi
 
-if [ -z "$PULUMI_CONFIG_PASSPHRASE" ]; then
-    echo ""
-    echo "🔒 This stack's secrets are encrypted with a shared passphrase (not a Pulumi Cloud account)."
-    read -r -s -p "Enter it now (ask an existing admin if you don't have it): " PULUMI_CONFIG_PASSPHRASE
-    echo ""
-    export PULUMI_CONFIG_PASSPHRASE
-    echo "   (set for this script only — add 'export PULUMI_CONFIG_PASSPHRASE=...' to your shell profile to persist it)"
-fi
+# Secrets use an empty passphrase: access to the state is controlled by Entra ID
+# (the blob container), not by a shared secret. The variable must be set, even if empty.
+export PULUMI_CONFIG_PASSPHRASE=""
+echo "   (PULUMI_CONFIG_PASSPHRASE must be set to empty in every shell, or use mise -- see README)"
 
 # --- Dependencies and stack -------------------------------------------------
 

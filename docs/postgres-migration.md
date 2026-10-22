@@ -59,12 +59,15 @@ Nothing from the internet can connect until you allow it:
 # a specific IP (e.g. your office)
 pulumi config set --path 'postgresAllowedIps[0]' 203.0.113.7
 
-# everything: needed for Cloudflare Hyperdrive, which has no small fixed egress range
-pulumi config set postgresAllowAllIps true
+# Cloudflare Hyperdrive: Cloudflare's published IPv4 ranges (cloudflare-ips.ts)
+pulumi config set postgresAllowCloudflare true
+
+# everything (avoid)
+# pulumi config set postgresAllowAllIps true
 pulumi up
 ```
 
-With "allow all", the only barriers are TLS and the role's password. Create a dedicated read-only role for the Worker rather than reusing `strapi_user`:
+Hyperdrive has no smaller egress range than Cloudflare's own (https://www.cloudflare.com/ips/), so `postgresAllowCloudflare` opens those ranges. They are shared by every Cloudflare customer's Workers, so the only barriers are TLS and the role's password. Refresh the list in `cloudflare-ips.ts` if Cloudflare changes it. Create a dedicated read-only role for the Worker rather than reusing `strapi_user`:
 
 ```ts
 export const hyperdriveDbPassword = createDbRole("pub-hyperdrive", "ameciclo", {

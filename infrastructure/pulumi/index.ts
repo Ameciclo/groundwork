@@ -3,6 +3,7 @@ import * as azure from "@pulumi/azure-native";
 import * as random from "@pulumi/random";
 import * as postgresql from "@pulumi/postgresql";
 import { createCoolifyVm } from "./vm";
+import { cloudflareIpv4Cidrs, cidrToRange } from "./cloudflare-ips";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -202,7 +203,8 @@ function createDbRole(
 // networking mode at creation). See docs/postgres-migration.md.
 //
 // Public access is closed by default: nothing can connect from the internet
-// until you set `postgresAllowedIps` and/or `postgresAllowAllIps` (below).
+// until you set `postgresAllowedIps`, `postgresAllowCloudflare` and/or
+// `postgresAllowAllIps` (below).
 // ---------------------------------------------------------------------------
 
 // Admin password for the new server. Humans use the Entra admin group login;
@@ -317,10 +319,12 @@ new azure.network.PrivateDnsZoneGroup("postgresql-pub-pe-dns", {
 
 // Firewall for the public endpoint. Closed unless configured:
 //   pulumi config set --path 'postgresAllowedIps[0]' 203.0.113.7
-//   pulumi config set postgresAllowAllIps true   # e.g. for Cloudflare Hyperdrive
-// Hyperdrive does not publish a small fixed egress range, so reaching it over
-// the public endpoint means allowing all IPs; TLS + strong role passwords are
-// then the only barrier.
+//   pulumi config set postgresAllowCloudflare true   # Cloudflare Hyperdrive
+//   pulumi config set postgresAllowAllIps true       # everything (avoid)
+// Hyperdrive does not publish a smaller egress range than Cloudflare's own
+// (https://www.cloudflare.com/ips/), so `postgresAllowCloudflare` allows
+// those. They are shared by every Cloudflare customer's Workers, so TLS and
+// the role's password are still the real barrier.
 const postgresAllowedIps = config.getObject<string[]>("postgresAllowedIps") ?? [];
 postgresAllowedIps.forEach((ip, i) => {
   new azure.dbforpostgresql.FirewallRule(`postgresql-pub-fw-${i}`, {
@@ -331,6 +335,18 @@ postgresAllowedIps.forEach((ip, i) => {
     endIpAddress: ip,
   });
 });
+if (config.getBoolean("postgresAllowCloudflare") ?? false) {
+  cloudflareIpv4Cidrs.forEach((cidr, i) => {
+    const { start, end } = cidrToRange(cidr);
+    new azure.dbforpostgresql.FirewallRule(`postgresql-pub-fw-cloudflare-${i}`, {
+      firewallRuleName: `cloudflare-${i}`,
+      serverName: postgresqlPubServer.name,
+      resourceGroupName: resourceGroup.name,
+      startIpAddress: start,
+      endIpAddress: end,
+    });
+  });
+}
 if (config.getBoolean("postgresAllowAllIps") ?? false) {
   new azure.dbforpostgresql.FirewallRule("postgresql-pub-fw-all", {
     firewallRuleName: "allow-all",

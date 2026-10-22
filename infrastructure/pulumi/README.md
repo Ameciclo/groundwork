@@ -13,4 +13,3 @@ pulumi up
 - `index.ts` — network, Postgres, storage resources
 - `vm.ts` — the Coolify VM, including its cloud-init and AAD SSH extension
 - `scripts/setup.sh` — one-time local environment setup
-- `scripts/create-database-users.sh` — provisions per-app DB users (run through the VM tunnel — Postgres is private)

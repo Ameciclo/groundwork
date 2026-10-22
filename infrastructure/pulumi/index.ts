@@ -172,7 +172,7 @@ const postgresqlServer = new azure.dbforpostgresql.Server(
     },
     availabilityZone: "1",
     authConfig: {
-      // Enabled alongside passwordAuth: the running apps (Strapi/Atlas/Zitadel)
+      // Enabled alongside passwordAuth: the running apps (Strapi/Atlas)
       // keep using their own password-based DB users; this only adds
       // Entra ID login for human admin access via the TI Ameciclo group.
       activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuth.Enabled,

@@ -10,14 +10,6 @@ yarn-error.log
 dist/
 *.tsbuildinfo
 
-# Build artifacts and temporary directories
-infrastructure/terraform/
-infrastructure/pulumi/node_modules/
-
-# Helm chart dependencies
-kubernetes/*/charts/
-kubernetes/*/Chart.lock
-
 # Environment files
 .env
 .env.local

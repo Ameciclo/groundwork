@@ -51,7 +51,7 @@ Static shared credential — prefer Option A. Use this only if AAD auth itself i
 
 ### App database users
 
-Strapi, Atlas, Zitadel, Passbolt, and Superset each have their own database and least-privilege user (`strapi_user`, `atlas_user`, etc.), created via `infrastructure/pulumi/scripts/create-database-users.sh`. Apps connect with these directly — unrelated to the admin access described above, and unaffected by it.
+Each app has its own database and user (`strapi_user`, `atlas_user`, `ameciclo`). New ones are declared in `infrastructure/pulumi/index.ts` (see "Databases and users" in the root README). Apps connect with these directly — unrelated to the admin access described above, and unaffected by it.
 
 ## Access management
 

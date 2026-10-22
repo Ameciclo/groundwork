@@ -21,7 +21,7 @@ ssh azureuser@$(pulumi stack output coolifyPublicIp)
 ### Azure (managed by Pulumi, in `infrastructure/pulumi/`)
 
 - **Virtual Network** — `10.10.0.0/16`, with VM subnet `10.10.1.0/24` and database subnet `10.10.2.0/24`
-- **PostgreSQL Flexible Server** — private (VNet-only), with databases for `strapi`, `atlas`, `zitadel`
+- **PostgreSQL Flexible Server** — private (VNet-only), with databases for `strapi`, `atlas`, `ameciclo`
 - **VM** — Ubuntu 22.04 LTS, Standard_B4as_v2 (4 vCPU, 16 GB), self-installs Coolify via cloud-init
 - **Blob Storage** — `media`, `backups`, `logs` containers
 - **Network Security Group** — only 22 / 80 / 443 open
@@ -31,9 +31,24 @@ ssh azureuser@$(pulumi stack output coolifyPublicIp)
 - **Coolify** itself, exposed at `https://coolify.az.ameciclo.org` via its built-in Traefik with Let's Encrypt
 - **Strapi** (CMS) — pulled from `ghcr.io/ameciclo/strapi:latest`, exposed at `https://strapi.az.ameciclo.org`. Connects to the Azure Postgres `strapi` database and Azure Blob `media` container.
 
-Other apps (Atlas, Zitadel) are not currently deployed. Their databases still exist in Azure Postgres and can be used if/when those apps are revived through Coolify.
+Atlas is not currently deployed; its database still exists in Azure Postgres and can be used if the app is revived through Coolify.
 
-**Known drift:** `passbolt` and `superset` databases (with `passbolt_user`/`superset_user`) also exist on the live Postgres server, but aren't declared anywhere in `index.ts` — they were created out-of-band, not through Pulumi. `pulumi preview`/`destroy` are blind to them; they just sit there unmanaged. Worth either importing them as real `Database` resources or documenting why not, but nobody's done either yet.
+### Databases and users
+
+Databases are `azure.dbforpostgresql.Database` resources in `index.ts`. Login roles are created with the `createDbRole()` helper (`@pulumi/postgresql`), which generates a password and grants access. Roles need a connection to the private server, so they are opt-in:
+
+```bash
+# terminal 1: tunnel (see docs/connecting.md)
+az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
+  -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
+
+# terminal 2, from infrastructure/pulumi
+pulumi config set manageDbRoles true
+PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv) pulumi up
+pulumi config rm manageDbRoles   # keeps CI preview working
+```
+
+The provider signs in as the `TI Ameciclo` group using a short-lived AAD token, not a stored password.
 
 ## Repository layout
 

@@ -56,6 +56,7 @@ The provider signs in as the `TI Ameciclo` group using a short-lived AAD token, 
 ```
 groundwork/
 ├── docs/connecting.md              # Tested VM/DB connection guide
+├── docs/postgres-migration.md      # Runbook: move to the public Postgres server
 ├── .github/workflows/              # CI (pulumi preview on PRs)
 └── infrastructure/pulumi/          # Pulumi stack: Azure VNet, VM, Postgres, Storage
     ├── index.ts                    # Resources (network, postgres, storage)

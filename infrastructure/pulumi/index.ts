@@ -294,9 +294,10 @@ function createDbRole(
     readOnly?: boolean;
     roleName?: string;
     dependsOn?: pulumi.Resource[];
+    provider?: postgresql.Provider;
   } = {},
 ) {
-  const provider = postgresProvider;
+  const provider = opts.provider ?? postgresProvider;
   const resourceOpts = { provider, dependsOn: opts.dependsOn };
   const password = new random.RandomPassword(`${name}-db-password`, {
     length: 32,
@@ -353,6 +354,188 @@ const amecicloDbPassword = createDbRole("ameciclo", "ameciclo", {
 
 
 
+
+// ---------------------------------------------------------------------------
+// Public PostgreSQL server (migration target)
+//
+// A VNet-integrated Flexible Server can never expose a public endpoint (the
+// networking mode is fixed at creation), so this is a second server that runs
+// alongside the private one until the data is migrated. It has a public
+// endpoint (firewalled) AND a Private Endpoint in the VM subnet, so Coolify
+// apps keep talking to it over the VNet while external clients (Cloudflare
+// Hyperdrive) use the public endpoint. See docs/postgres-migration.md.
+//
+// Public access is closed by default: nothing can connect from the internet
+// until you set `postgresAllowedIps` and/or `postgresAllowAllIps` (below).
+// ---------------------------------------------------------------------------
+
+// Admin password for the new server. Humans use the Entra admin group login;
+// this exists because the server requires one at creation.
+const postgresqlPubPassword = new random.RandomPassword(
+  "postgresql-pub-admin-password",
+  {
+    length: 32,
+    special: true,
+    overrideSpecial: "!#$%&*()-_=+[]{}<>:?",
+  },
+);
+
+const postgresqlPubServer = new azure.dbforpostgresql.Server(
+  "postgresql-pub",
+  {
+    serverName: `${projectName}-postgres-pub`,
+    resourceGroupName: resourceGroup.name,
+    location: location,
+    administratorLogin: "psqladmin",
+    administratorLoginPassword: postgresqlPubPassword.result,
+    version: azure.dbforpostgresql.PostgresMajorVersion.PostgresMajorVersion_16,
+    sku: {
+      name: "Standard_B2s",
+      tier: azure.dbforpostgresql.SkuTier.Burstable,
+    },
+    storage: {
+      storageSizeGB: 32,
+      autoGrow: azure.dbforpostgresql.StorageAutoGrow.Disabled,
+      iops: 120,
+      tier: azure.dbforpostgresql.AzureManagedDiskPerformanceTier.P4,
+      type: "",
+    },
+    availabilityZone: "1",
+    authConfig: {
+      activeDirectoryAuth: azure.dbforpostgresql.ActiveDirectoryAuth.Enabled,
+      passwordAuth: azure.dbforpostgresql.PasswordAuth.Enabled,
+    },
+    highAvailability: {
+      mode: azure.dbforpostgresql.PostgreSqlFlexibleServerHighAvailabilityMode.Disabled,
+    },
+    maintenanceWindow: {
+      customWindow: "Disabled",
+      dayOfWeek: 0,
+      startHour: 0,
+      startMinute: 0,
+    },
+    replica: {
+      role: azure.dbforpostgresql.ReplicationRole.Primary,
+    },
+    replicationRole: azure.dbforpostgresql.ReplicationRole.Primary,
+    // Public access mode: no delegated subnet, no private DNS zone here (the
+    // Private Endpoint below brings its own DNS record).
+    network: {
+      publicNetworkAccess:
+        azure.dbforpostgresql.ServerPublicNetworkAccessState.Enabled,
+    },
+    backup: {
+      backupRetentionDays: 7,
+      geoRedundantBackup: azure.dbforpostgresql.GeoRedundantBackup.Disabled,
+    },
+    tags: commonTags,
+  },
+  // Same azure-native dataEncryption PATCH bug as the private server above.
+  { ignoreChanges: ["dataEncryption"] },
+);
+
+const postgresqlPubAadAdmin = new azure.dbforpostgresql.Administrator(
+  "postgresql-pub-aad-admin",
+  {
+    serverName: postgresqlPubServer.name,
+    resourceGroupName: resourceGroup.name,
+    objectId: entraAdminGroupObjectId,
+    principalName: "TI Ameciclo",
+    principalType: azure.dbforpostgresql.PrincipalType.Group,
+    tenantId: clientConfig.tenantId,
+  },
+  { dependsOn: [postgresqlPubServer] },
+);
+
+// Private Endpoint: gives the VM a private IP for the new server, resolved
+// through the existing privatelink DNS zone (already linked to the VNet).
+const postgresqlPubEndpoint = new azure.network.PrivateEndpoint(
+  "postgresql-pub-pe",
+  {
+    privateEndpointName: `${projectName}-postgres-pub-pe`,
+    resourceGroupName: resourceGroup.name,
+    location: location,
+    subnet: { id: k3sSubnet.id },
+    privateLinkServiceConnections: [
+      {
+        name: "postgresql-pub",
+        privateLinkServiceId: postgresqlPubServer.id,
+        groupIds: ["postgresqlServer"],
+      },
+    ],
+    tags: commonTags,
+  },
+  { dependsOn: [postgresqlPubAadAdmin] },
+);
+
+new azure.network.PrivateDnsZoneGroup("postgresql-pub-pe-dns", {
+  privateDnsZoneGroupName: "default",
+  privateEndpointName: postgresqlPubEndpoint.name,
+  resourceGroupName: resourceGroup.name,
+  privateDnsZoneConfigs: [
+    { name: "postgres", privateDnsZoneId: postgresqlDnsZone.id },
+  ],
+});
+
+// Firewall for the public endpoint. Closed unless configured:
+//   pulumi config set --path 'postgresAllowedIps[0]' 203.0.113.7
+//   pulumi config set postgresAllowAllIps true   # e.g. for Cloudflare Hyperdrive
+// Hyperdrive does not publish a small fixed egress range, so reaching it over
+// the public endpoint means allowing all IPs; TLS + strong role passwords are
+// then the only barrier.
+const postgresAllowedIps = config.getObject<string[]>("postgresAllowedIps") ?? [];
+postgresAllowedIps.forEach((ip, i) => {
+  new azure.dbforpostgresql.FirewallRule(`postgresql-pub-fw-${i}`, {
+    firewallRuleName: `allow-${i}`,
+    serverName: postgresqlPubServer.name,
+    resourceGroupName: resourceGroup.name,
+    startIpAddress: ip,
+    endIpAddress: ip,
+  });
+});
+if (config.getBoolean("postgresAllowAllIps") ?? false) {
+  new azure.dbforpostgresql.FirewallRule("postgresql-pub-fw-all", {
+    firewallRuleName: "allow-all",
+    serverName: postgresqlPubServer.name,
+    resourceGroupName: resourceGroup.name,
+    startIpAddress: "0.0.0.0",
+    endIpAddress: "255.255.255.255",
+  });
+}
+
+const pubDatabases = ["strapi", "atlas", "ameciclo"].map(
+  (name) =>
+    new azure.dbforpostgresql.Database(`pub-${name}-db`, {
+      databaseName: name,
+      serverName: postgresqlPubServer.name,
+      resourceGroupName: resourceGroup.name,
+      charset: "UTF8",
+      collation: "en_US.utf8",
+    }, { dependsOn: [postgresqlPubAadAdmin] }),
+);
+
+// Roles on the new server go through a second tunnel (port 15433) to the new
+// server's FQDN, same AAD token as the private server's provider:
+//   az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
+//     -N -L 15433:ameciclo-postgres-pub.postgres.database.azure.com:5432
+const postgresPubTunnelPort = config.getNumber("postgresPubTunnelPort") ?? 15433;
+const postgresPubProvider = new postgresql.Provider("postgres-pub", {
+  host: "localhost",
+  port: postgresPubTunnelPort,
+  username: "TI Ameciclo",
+  sslmode: "require",
+  superuser: false,
+});
+
+const pubRole = (name: string, roleName: string, database: string) =>
+  createDbRole(`pub-${name}`, database, {
+    roleName,
+    provider: postgresPubProvider,
+    dependsOn: pubDatabases,
+  });
+const strapiPubDbPassword = pubRole("strapi", "strapi_user", "strapi");
+const atlasPubDbPassword = pubRole("atlas", "atlas_user", "atlas");
+const amecicloPubDbPassword = pubRole("ameciclo", "ameciclo", "ameciclo");
 
 // Storage Account for Blob Storage (Azure's S3 equivalent)
 const storageAccount = new azure.storage.StorageAccount("ameciclo-storage", {
@@ -460,3 +643,7 @@ export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
 
 // pulumi stack output amecicloDbPassword --show-secrets 
 export { amecicloDbPassword };
+
+// Public PostgreSQL server (migration target; see docs/postgres-migration.md)
+export const postgresqlPubServerFqdn = postgresqlPubServer.fullyQualifiedDomainName;
+export { strapiPubDbPassword, atlasPubDbPassword, amecicloPubDbPassword };

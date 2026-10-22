@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import * as random from "@pulumi/random";
+import * as postgresql from "@pulumi/postgresql";
 import { createCoolifyVm } from "./vm";
 
 // Get configuration
@@ -250,13 +251,112 @@ const strapiDatabase = new azure.dbforpostgresql.Database("strapi-db", {
   collation: "en_US.utf8",
 });
 
-const zitadelDatabase = new azure.dbforpostgresql.Database("zitadel-db", {
-  databaseName: "zitadel",
+const amecicloDatabase = new azure.dbforpostgresql.Database("ameciclo-db", {
+  databaseName: "ameciclo",
   serverName: postgresqlServer.name,
   resourceGroupName: resourceGroup.name,
   charset: "UTF8",
   collation: "en_US.utf8",
 });
+
+// PostgreSQL roles + grants (opt-in).
+//
+// The server is VNet-only, so the postgresql provider connects through an SSH
+// tunnel opened by the operator (see docs/connecting.md):
+//   az ssh vm -g ameciclo-rg-prod -n ameciclo-coolify-vm -- \
+//     -N -L 15432:ameciclo-postgres.postgres.database.azure.com:5432
+// Gated behind `manageDbRoles` so `pulumi preview` (e.g. CI, which can't reach
+// the server) works without the tunnel. Enable per-run:
+//   pulumi config set manageDbRoles true
+const manageDbRoles = config.getBoolean("manageDbRoles") ?? false;
+const postgresTunnelPort = config.getNumber("postgresTunnelPort") ?? 15432;
+
+const postgresProvider = manageDbRoles
+  ? new postgresql.Provider("postgres", {
+      host: "localhost",
+      port: postgresTunnelPort,
+      // Logs in as the Entra admin group (see docs/connecting.md). The password
+      // is a short-lived AAD token, read by the provider from PGPASSWORD:
+      //   PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
+      //     --query accessToken -o tsv) pulumi up
+      username: "TI Ameciclo",
+      sslmode: "require",
+      // Azure's admin isn't a real superuser
+      superuser: false,
+    })
+  : undefined;
+
+// Creates a login role (default `<name>_user`) with a generated password and
+// grants it access to `database`. Read-only roles get SELECT only. Returns the password so it can
+// be exported and pasted into the app's Coolify env vars.
+function createDbRole(
+  name: string,
+  database: string,
+  opts: {
+    readOnly?: boolean;
+    roleName?: string;
+    dependsOn?: pulumi.Resource[];
+  } = {},
+) {
+  if (!postgresProvider) {
+    throw new Error("createDbRole requires `pulumi config set manageDbRoles true`");
+  }
+  const provider = postgresProvider;
+  const resourceOpts = { provider, dependsOn: opts.dependsOn };
+  const password = new random.RandomPassword(`${name}-db-password`, {
+    length: 32,
+    special: false,
+  });
+  const role = new postgresql.Role(
+    `${name}-role`,
+    { name: opts.roleName ?? `${name}_user`, login: true, password: password.result },
+    resourceOpts,
+  );
+  new postgresql.Grant(
+    `${name}-db-grant`,
+    {
+      database,
+      role: role.name,
+      objectType: "database",
+      privileges: opts.readOnly ? ["CONNECT"] : ["CONNECT", "CREATE", "TEMPORARY"],
+    },
+    resourceOpts,
+  );
+  new postgresql.Grant(
+    `${name}-schema-grant`,
+    {
+      database,
+      role: role.name,
+      schema: "public",
+      objectType: "schema",
+      privileges: opts.readOnly ? ["USAGE"] : ["USAGE", "CREATE"],
+    },
+    resourceOpts,
+  );
+  new postgresql.Grant(
+    `${name}-table-grant`,
+    {
+      database,
+      role: role.name,
+      schema: "public",
+      objectType: "table",
+      privileges: opts.readOnly
+        ? ["SELECT"]
+        : ["SELECT", "INSERT", "UPDATE", "DELETE"],
+    },
+    resourceOpts,
+  );
+  return pulumi.secret(password.result);
+}
+
+// `ameciclo` role on the `ameciclo` database (only created when manageDbRoles
+// is enabled).
+const amecicloDbPassword = manageDbRoles
+  ? createDbRole("ameciclo", "ameciclo", {
+      roleName: "ameciclo",
+      dependsOn: [amecicloDatabase],
+    })
+  : undefined;
 
 
 
@@ -365,3 +465,6 @@ export const logsContainerName = logsContainer.name;
 // PostgreSQL admin credentials (encrypted in Pulumi state)
 export const postgresqlAdminUsername = pulumi.output("psqladmin");
 export const postgresqlAdminPassword = pulumi.secret(postgresqlPassword.result);
+
+// pulumi stack output amecicloDbPassword --show-secrets (set when manageDbRoles is enabled)
+export { amecicloDbPassword };

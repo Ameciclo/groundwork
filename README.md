@@ -37,6 +37,19 @@ Atlas is not currently deployed; its database still exists in Azure Postgres and
 
 Databases are `azure.dbforpostgresql.Database` resources in `index.ts`. Login roles are created with the `createDbRole()` helper (`@pulumi/postgresql`), which generates a password and grants access. Roles must always stay declared in `index.ts`: removing one makes the next `pulumi up` drop it from the database.
 
+### Extensions
+
+Extensions are declared in `index.ts` too, in two parts: the `azure.extensions` server parameter (the allow-list, `postgresql-pub-extensions`) and one `postgresql.Extension` per database (`CREATE EXTENSION`, which also needs the tunnel below). Today that is **PostGIS** on the `ameciclo` database.
+
+`azure.extensions` is a single comma-separated list and Pulumi sets the whole value, so to add another extension, first read the current list and keep what is in it:
+
+```bash
+az postgres flexible-server parameter show -g ameciclo-rg-prod \
+  --server-name ameciclo-postgres-pub --name azure.extensions --query value -o tsv
+```
+
+The `Extension` resources use `retainOnDelete`, so removing one from the program never drops the extension from the database.
+
 The provider only connects to Postgres when a role or grant actually changes. Unrelated `pulumi up`/`preview` runs (and CI) don't need a tunnel. To add or change a role, open the tunnel and pass an AAD token:
 
 ```bash

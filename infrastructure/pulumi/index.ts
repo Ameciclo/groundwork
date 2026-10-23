@@ -395,6 +395,43 @@ const strapiPubDbPassword = pubRole("strapi", "strapi_user", "strapi");
 const atlasPubDbPassword = pubRole("atlas", "atlas_user", "atlas");
 const amecicloPubDbPassword = pubRole("ameciclo", "ameciclo", "ameciclo");
 
+// PostGIS, for the `ameciclo` database (cycling infrastructure geometry).
+//
+// Azure needs two steps, in this order:
+//   1. allow-list the extension in the `azure.extensions` server parameter.
+//      The value is the WHOLE list, so setting it replaces whatever was there
+//      (it was empty when PostGIS was added; read it with
+//      `az postgres flexible-server parameter show ... --name azure.extensions`
+//      before adding another extension, and keep the existing ones here).
+//      PostGIS needs no `shared_preload_libraries`, so there is no restart.
+//   2. CREATE EXTENSION in each database that uses it (extensions are per
+//      database). That goes through the same tunnel as the roles above.
+// Neither step touches any existing data.
+const postgresPubExtensions = new azure.dbforpostgresql.Configuration(
+  "postgresql-pub-extensions",
+  {
+    configurationName: "azure.extensions",
+    serverName: postgresqlPubServer.name,
+    resourceGroupName: resourceGroup.name,
+    source: "user-override",
+    value: "POSTGIS",
+  },
+  { dependsOn: [postgresqlPubServer] },
+);
+
+// retainOnDelete: if this resource is ever removed from the program, Pulumi
+// must not DROP the extension, which would fail or take the geometry columns
+// with it.
+new postgresql.Extension(
+  "pub-ameciclo-postgis",
+  { name: "postgis", database: "ameciclo" },
+  {
+    provider: postgresPubProvider,
+    dependsOn: [postgresPubExtensions, ...pubDatabases],
+    retainOnDelete: true,
+  },
+);
+
 // Storage Account for Blob Storage (Azure's S3 equivalent)
 const storageAccount = new azure.storage.StorageAccount("ameciclo-storage", {
   accountName: `${projectName}stor${environment.substring(0, 4)}`,

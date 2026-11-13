@@ -24,7 +24,7 @@ ssh azureuser@$(pulumi stack output coolifyPublicIp)
 - **PostgreSQL Flexible Server** — private (VNet-only), with databases for `strapi`, `atlas`, `ameciclo`
 - **VM** — Ubuntu 22.04 LTS, Standard_B4as_v2 (4 vCPU, 16 GB), self-installs Coolify via cloud-init
 - **Blob Storage** — `media`, `backups`, `logs` containers
-- **Network Security Group** — only 22 / 80 / 443 open
+- **Network Security Group** — only 22 / 80 / 443 open. Optionally one more port, from Cloudflare's IPv4 ranges only, for the staging Postgres in Coolify: `pulumi config set stagingPostgresPort <port>` (see the comment in `infrastructure/pulumi/index.ts`)
 
 ### On the VM (managed by Coolify)
 

@@ -106,13 +106,6 @@ const httpRule = new azure.network.SecurityRule("allow-http", {
   destinationAddressPrefix: "*",
 });
 
-// Public port of the staging Postgres that runs in Coolify (`postgres-staging`), so
-// Cloudflare Hyperdrive can reach it from the PR previews of the web and admin apps.
-// It must match the "Public port" of that database in Coolify. Only Cloudflare's IPv4
-// ranges are allowed. They are shared by every Cloudflare customer's Workers, so TLS
-// (Hyperdrive `verify-ca` with Coolify's CA) and the role's password are the real
-// barrier. CI opens a temporary rule for its own runner at priority 1100 and above to
-// run migrations (named `github-run-<id>`, created and deleted by the workflow, not here).
 const stagingPostgresPort = "15432";
 const stagingPostgresRule = new azure.network.SecurityRule("allow-staging-postgres", {
   securityRuleName: "allow-staging-postgres",

@@ -106,6 +106,21 @@ const httpRule = new azure.network.SecurityRule("allow-http", {
   destinationAddressPrefix: "*",
 });
 
+const stagingPostgresPort = "15432";
+const stagingPostgresRule = new azure.network.SecurityRule("allow-staging-postgres", {
+  securityRuleName: "allow-staging-postgres",
+  resourceGroupName: resourceGroup.name,
+  networkSecurityGroupName: k3sNsg.name,
+  priority: 1010,
+  direction: "Inbound",
+  access: "Allow",
+  protocol: "Tcp",
+  sourcePortRange: "*",
+  destinationPortRange: stagingPostgresPort,
+  sourceAddressPrefixes: cloudflareIpv4Cidrs,
+  destinationAddressPrefix: "*",
+});
+
 // Private DNS Zone for PostgreSQL
 const postgresqlDnsZone = new azure.privatedns.PrivateZone("postgresql-dns", {
   privateZoneName: "privatelink.postgres.database.azure.com",

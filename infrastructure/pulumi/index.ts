@@ -121,6 +121,24 @@ const stagingPostgresRule = new azure.network.SecurityRule("allow-staging-postgr
   destinationAddressPrefix: "*",
 });
 
+// Traccar (projeto DIM, Coolify): o app Traccar Client dos celulares envia a posição pelo protocolo
+// OsmAnd, em HTTP puro na porta 5055 (sem criptografia). A origem é qualquer IP, porque o celular muda de
+// rede; quem autentica o aparelho é o identificador dele, cadastrado no Traccar.
+const traccarOsmandPort = "5055";
+const traccarOsmandRule = new azure.network.SecurityRule("allow-traccar-osmand", {
+  securityRuleName: "allow-traccar-osmand",
+  resourceGroupName: resourceGroup.name,
+  networkSecurityGroupName: k3sNsg.name,
+  priority: 1020,
+  direction: "Inbound",
+  access: "Allow",
+  protocol: "Tcp",
+  sourcePortRange: "*",
+  destinationPortRange: traccarOsmandPort,
+  sourceAddressPrefix: "*",
+  destinationAddressPrefix: "*",
+});
+
 // Private DNS Zone for PostgreSQL
 const postgresqlDnsZone = new azure.privatedns.PrivateZone("postgresql-dns", {
   privateZoneName: "privatelink.postgres.database.azure.com",

@@ -112,6 +112,7 @@ export function createCoolifyVm(
         name: `${args.projectName}-coolify-osdisk`,
         caching: "ReadWrite",
         createOption: "FromImage",
+        diskSizeGB: 128,
         managedDisk: {
           storageAccountType: "Premium_LRS",
         },
